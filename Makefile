@@ -34,7 +34,7 @@ $(DEST_BIN)/ppldc: ppldc
 $(DEST_SBIN)/pplddd: pplddd
 	install $< $@
 
-ppldd.ko: ppldd.c
+ppldd.ko: ppldd.c /usr/src/linux/include/linux/version.h
 	make -C /usr/src/linux SUBDIRS=$(PWD) modules
 
 obj-m += ppldd.o

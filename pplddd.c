@@ -19,16 +19,16 @@
 #define TEMPWARN	55000
 #define PINGPROG	"/usr/sbin/fping -eA -r 1 64.81.235.104 128.242.125.65"
 
-#define LOADLEDNUM	8
-#define USERSLEDNUM	6
-#define TEMPLEDNUM	5
-#define MAILLEDNUM	4
-#define PINGLEDNUM	1
+#define LOADLEDNUM	1
+#define USERSLEDNUM	3
+#define TEMPLEDNUM	4
+#define MAILLEDNUM	5
+#define PINGLEDNUM	8
 
 int ppldd_dev;
 char *progname;
 
-void die(const char *);
+void die(const char *) __attribute__((noreturn));
 inline void led_on(int);
 inline void led_off(int);
 inline void led_tog(int);

@@ -15,7 +15,7 @@
 #endif
 static const unsigned char revnibble[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
-void die(char *);
+void die(char *) __attribute__((noreturn));
 int parse_leds(const char *);
 int parse_led(const char *);
 #ifdef PPLDD_ENABLE_LCD
