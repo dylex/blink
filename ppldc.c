@@ -13,7 +13,7 @@
 #ifdef PPLDD_ENABLE_LCD
 #define MAX_DATALEN	(4*(PPLDD_LCD_ROWS*PPLDD_LCD_COLS+4))	/* Plenty of space */
 #endif
-static const unsigned char revword[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
+static const unsigned char revnibble[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
 void die(char *);
 int parse_leds(const char *);
@@ -85,32 +85,17 @@ void die(char *err)
 int parse_leds(const char *p)
 {
 	ppldd_led_stat_t leds;
+	char *c;
 	int i;
 
-	if (p[0] >= '0' && p[0] <= '0' + PPLDD_LED_COUNT && !p[1])
-		return 1 << (p[0] - '1');
+	/* if (((p[0] >= '0' && p[0] <= '8') || (p[0] >= 'a' XXX )) && !p[1])
+		return 1 << (p[0] - '1'); */
+	
+	leds = strtol(p, &c, 2);
+	if (!*c) return leds;
+	leds = strtol(p, &c, 16);
+	if (!*c) return leds;
 
-	leds = 0;
-	for (i = 0; i < PPLDD_LED_COUNT; i++)
-	{
-		if (!(p[i] == '0' || p[i] == '1'))
-			goto try_hex;
-		leds |= (p[i] == '1') << i;
-	}
-	return leds;
-
-try_hex:
-	leds = 0;
-	for (i = 0; i < PPLDD_LED_COUNT / 4; i++)
-	{
-		char c = tolower(p[i]);
-		if ((c < '0' || c > '9') && (c < 'a' || c > 'f'))
-			goto give_up;
-		leds |= revword[c <= '9' ? c - '0' : c - 'a' + 10] << (4 * i);
-	}
-	return leds;
-
-give_up:
 	fprintf(stderr, "%s: unknown leds format: %s\n", progname, p);
 	return -1;
 }
@@ -194,7 +179,7 @@ void print_status()
 	lseek(ppldd_dev, 0, SEEK_SET);
 	if ((l = read(ppldd_dev, buf, PPLDD_INFO_SIZE+7)) == -1)
 		die("read ppldd");
-	if (buf[PPLDD_LED_COUNT] != '\n')
+	if (l < PPLDD_INFO_SIZE || buf[PPLDD_LED_COUNT] != '\n')
 	{
 		printf("Can't parse status output:\n");
 		write(STDOUT_FILENO, buf, l);
@@ -262,15 +247,15 @@ error_t parse(int key, char *optarg, struct argp_state *state)
 			if (optarg && tolower(*optarg) == 'h')
 			{
 				unsigned char w;
-				for (i = 0; i<PPLDD_LED_COUNT; i+=4)
+				for (i = ((PPLDD_LED_COUNT-1)&~3); i >= 0; i-=4)
 				{
-					w = revword[x >> i & 15];
+					w = x >> i & 15;
 					putchar(w < 10 ? '0' + w : 'A' - 10 + w);
 				}
 			}
 			else
 			{
-				for (i = 0; i<PPLDD_LED_COUNT; i++)
+				for (i = PPLDD_LED_COUNT-1; i >= 0; i--)
 					putchar(x >> i & 1 ? '1' : '0');
 			}
 			putchar('\n');

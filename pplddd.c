@@ -13,17 +13,17 @@
 #include <fcntl.h>
 #include "ppldd.h"
 
-#define MAILFILE	"/var/spool/mail/dylan"
+#define MAILFILE	"/home/dylan/mail/spool"
 #define LOADAVGFILE	"/proc/loadavg"
-#define TEMPFILE	"/sys/bus/i2c/devices/0-0290/temp3_input"
-#define TEMPWARN	42000
+#define TEMPFILE	"/sys/bus/i2c/devices/0-0290/temp2_input"
+#define TEMPWARN	55000
 #define PINGPROG	"/usr/sbin/fping -eA -r 1 64.81.235.104 128.242.125.65"
 
-#define LOADLEDNUM	1
-#define USERSLEDNUM	3
-#define TEMPLEDNUM	4
-#define MAILLEDNUM	5
-#define PINGLEDNUM	8
+#define LOADLEDNUM	8
+#define USERSLEDNUM	6
+#define TEMPLEDNUM	5
+#define MAILLEDNUM	4
+#define PINGLEDNUM	1
 
 int ppldd_dev;
 char *progname;

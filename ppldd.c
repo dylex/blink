@@ -41,7 +41,7 @@ static ppldd_led_stat_t ledstat;
 static ppldd_lcd_disp_t lcddisp;
 #endif
 
-#define LED(n)		((unsigned char)(1 << ((n)-1)))
+#define LED(n)		((ppldd_led_stat_t)(1 << ((n)-1)))
 #define LEDON(n)	(ledstat |= LED(n))
 #define LEDOFF(n)	(ledstat &= ~LED(n))
 #define LEDTOG(n)	(ledstat ^= LED(n))
@@ -49,7 +49,8 @@ static ppldd_lcd_disp_t lcddisp;
 
 void update_leds(void)
 {
-	parport_write_data(pport, ledstat);
+	parport_write_data(pport, ledstat & 0xFF);
+	parport_write_control(pport, (ledstat >> 8) & 0x0F);
 }
 
 #ifdef PPLDD_ENABLE_LCD
@@ -71,7 +72,7 @@ ssize_t info_read(struct file *file, char *data, size_t size, loff_t *off)
 		return 0;
 	}
 
-	for (i=1;i<1<<PPLDD_LED_COUNT;i<<=1)
+	for (i=1<<(PPLDD_LED_COUNT-1);i;i>>=1)
 	{
 		*(p++)=(ledstat&i)?'1':'0';
 	}

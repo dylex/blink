@@ -6,14 +6,14 @@
 #define PPLDD_LCD_ROWS	4
 #define PPLDD_LCD_COLS	20
 #endif
-#define PPLDD_LED_COUNT	8	/* we explicitly use uchars anyway */
+#define PPLDD_LED_COUNT	12
 #ifdef PPLDD_ENABLE_LCD
 #define PPLDD_INFO_SIZE	(PPLDD_LED_COUNT+1 + PPLDD_LCD_ROWS*(PPLDD_LCD_COLS+1))
 #else
 #define PPLDD_INFO_SIZE	(PPLDD_LED_COUNT+1)
 #endif
 
-typedef unsigned char ppldd_led_stat_t;
+typedef unsigned short ppldd_led_stat_t;
 #ifdef PPLDD_ENABLE_LCD
 typedef char ppldd_lcd_disp_t[PPLDD_LCD_ROWS][PPLDD_LCD_COLS];
 struct ppldd_lcd_char {
