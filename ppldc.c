@@ -10,14 +10,18 @@
 #include <argp.h>
 #include "ppldd.h"
 
+#ifdef PPLDD_ENABLE_LCD
 #define MAX_DATALEN	(4*(PPLDD_LCD_ROWS*PPLDD_LCD_COLS+4))	/* Plenty of space */
+#endif
 static const unsigned char revword[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
 void die(char *);
 int parse_leds(const char *);
 int parse_led(const char *);
+#ifdef PPLDD_ENABLE_LCD
 void lcd_send_wrap(struct ppldd_lcd_data *);
 void write_lcd(const char *, int);
+#endif
 void print_status(void);
 
 /******************************************************************** ARGP PARSING */
@@ -33,6 +37,7 @@ static const struct argp_option argp_options[] = {
 	{"on-led",	'1', "LED", 0, 		"turn on LED", 2},
 	{"toggle-led",	't', "LED", 0, 		"toggle LED", 2},
 
+#ifdef PPLDD_ENABLE_LCD
 	{"clear-lcd",	'z', 0, 0, 		"clear the lcd display", 4},
 	{"reset-lcd",	0, 0, OPTION_ALIAS }, 
 	{"row",		'y', "ROW", 0, 		"set lcd position to ROW [0]", 5},
@@ -42,6 +47,7 @@ static const struct argp_option argp_options[] = {
 	{"message",	'm', "TEXT", 0, 	"write TEXT to lcd (same as arguments)", 6},
 	{"string",	0, 0, OPTION_ALIAS },
 	{"file",	'f', "FILE", OPTION_ARG_OPTIONAL, "write text from FILE [stdin] to lcd", 6},
+#endif
 
 	{} 
 };
@@ -50,7 +56,12 @@ error_t parse(int, char *, struct argp_state *);
 static const struct argp argp_parser = {
 	options:	argp_options,
 	parser:		&parse,
-	args_doc:	"[LCD TEXT]",
+	args_doc:	
+#ifdef PPLDD_ENABLE_LCD
+		"[LCD TEXT]",
+#else
+		"",
+#endif
 	doc:		"Control the ppldd device.\vArgument actions happen sequentially, so order matters."
 };
 	
@@ -58,8 +69,10 @@ static const struct argp argp_parser = {
 
 const char *progname;
 int ppldd_dev;
+#ifdef PPLDD_ENABLE_LCD
 int lcd_row = 0, lcd_col = 0;
 int opt_wrap = 0;
+#endif
 
 /******************************************************************** FUNCTIONS */
 
@@ -114,6 +127,7 @@ int parse_led(const char *p)
 	return i;
 }
 
+#ifdef PPLDD_ENABLE_LCD
 void lcd_send_wrap(struct ppldd_lcd_data *cmd)
 {
 	if (ioctl(ppldd_dev, PPLDD_IOC_LCD_WRITE, cmd) == -1)
@@ -170,6 +184,7 @@ void write_lcd(const char *data, int datalen)
 		lcd_send_wrap(&cmd);
 	lcd_col = lcd_row = 0; /* reset */
 }
+#endif
 
 void print_status()
 {
@@ -187,8 +202,11 @@ void print_status()
 	else
 	{
 		buf[PPLDD_LED_COUNT] = 0;
-		printf("LEDS: %s\nLCD:\n", buf);
+		printf("LEDS: %s\n", buf);
+#ifdef PPLDD_ENABLE_LCD
+		printf("LCD:\n");
 		write(STDOUT_FILENO, buf+PPLDD_LED_COUNT+1, l-PPLDD_LED_COUNT-1);
+#endif
 	}
 }
 
@@ -264,6 +282,7 @@ error_t parse(int key, char *optarg, struct argp_state *state)
 					die("ioctl LED_SET");
 			break;
 
+#ifdef PPLDD_ENABLE_LCD
 		/********************** LCD */
 		case 'w':
 			opt_wrap = 1;
@@ -331,6 +350,7 @@ error_t parse(int key, char *optarg, struct argp_state *state)
 				fclose(in);
 			write_lcd(data, datalen);
 		        break; }
+#endif
 
 		case ARGP_KEY_ARG: return ARGP_ERR_UNKNOWN; /* "fall-through" */
 		case ARGP_KEY_ARGS: 

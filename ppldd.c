@@ -37,7 +37,9 @@ struct pardevice *pdev;
 struct parport *pport;
 
 static ppldd_led_stat_t ledstat;
+#ifdef PPLDD_ENABLE_LCD
 static ppldd_lcd_disp_t lcddisp;
+#endif
 
 #define LED(n)		((unsigned char)(1 << ((n)-1)))
 #define LEDON(n)	(ledstat |= LED(n))
@@ -50,9 +52,11 @@ void update_leds(void)
 	parport_write_data(pport, ledstat);
 }
 
+#ifdef PPLDD_ENABLE_LCD
 void update_lcd(void)
 {
 }
+#endif
 
 /* Get some information (text) */
 ssize_t info_read(struct file *file, char *data, size_t size, loff_t *off)
@@ -73,12 +77,14 @@ ssize_t info_read(struct file *file, char *data, size_t size, loff_t *off)
 	}
 	*(p++) = '\n';
 
+#ifdef PPLDD_ENABLE_LCD
 	for (i = 0; i < PPLDD_LCD_ROWS; i++)
 	{
 		memcpy(p, lcddisp[i], PPLDD_LCD_COLS);
 		p+=PPLDD_LCD_COLS;
 		*(p++)='\n';
 	}
+#endif
 	*p=0;
 
 	if (*off+size < PPLDD_INFO_SIZE)
@@ -111,10 +117,12 @@ int dev_close(struct inode *inode, struct file *file)
 /* real work */
 int dev_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
 {
+#ifdef PPLDD_ENABLE_LCD
 	union {
 		struct ppldd_lcd_char chr;
 		struct ppldd_lcd_data dat;
 	} data;
+#endif
 
 	switch (cmd) 
 	{
@@ -141,6 +149,7 @@ int dev_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned
 			update_leds();
 			return 0;
 
+#ifdef PPLDD_ENABLE_LCD
 		case PPLDD_IOC_LCD_GET:
 			if (copy_to_user((ppldd_lcd_disp_t *)arg, lcddisp, sizeof(ppldd_lcd_disp_t)))
 				return -EFAULT;
@@ -175,6 +184,7 @@ int dev_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned
 				return -EFAULT;
 			memcpy(&(lcddisp[data.dat.row][data.dat.col]), data.dat.data, data.dat.len);
 			return 0;
+#endif
 
 #ifdef OLD_LINUX_MODULES
 		case PPLDD_IOC_UNUSE:
@@ -228,7 +238,9 @@ int init_module()
 
 	pport = pdev->port; /* probably unnecessarily futile */
 
+#ifdef PPLDD_ENABLE_LCD
 	memset(lcddisp, PPLDD_LCD_CHR_BLANK, sizeof(ppldd_lcd_disp_t));
+#endif
 	ledstat = 0;
 	update_leds();
 	if ((err = misc_register(&miscdev)))
