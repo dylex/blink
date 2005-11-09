@@ -11,123 +11,120 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include "ppldd.h"
 
-#define MAILFILE	"/home/dylan/mail/spool"
+#define USERNAME	"dylan"
+#define MAILFILE	"/home/" USERNAME "/mail/spool"
 #define LOADAVGFILE	"/proc/loadavg"
 #define TEMPFILE	"/sys/bus/i2c/devices/0-0290/temp2_input"
 #define TEMPWARN	55000
 #define PINGPROG	"/usr/sbin/fping -eA -r 1 64.81.235.104 128.242.125.65"
 
 #define LOADLEDNUM	1
-#define USERSLEDNUM	3
+#define USERSLEDNUM	0//3
 #define TEMPLEDNUM	4
 #define MAILLEDNUM	5
 #define PINGLEDNUM	8
 
-int ppldd_dev;
-char *progname;
+void die(const char *, ...) __attribute__((noreturn, format(printf, 1, 2)));
 
-void die(const char *) __attribute__((noreturn));
-inline void led_on(int);
-inline void led_off(int);
-inline void led_tog(int);
+struct event;
+typedef struct timeval event_when;
+typedef void event_fn(struct event *);
+typedef unsigned long event_data;
+struct event {
+	event_when when;
+	event_fn *fn;
+	/* event_data data; */
+	struct event *next;
+};
 
-void init_leds();
-int checkfile(char *);
-int loadavg();
-inline long load_delay();
-int temp();
-void users();
-int pingstat();
+void schedule(void) __attribute__((noreturn));
 
-int main(int argc, char **argv)
+/********************************************************** infrastructure */
+
+static int Dev;
+
+void init()
 {
-	struct timeval tv;
-	long ld;
-	int i;
-
-	progname=argv[0];
-
-	if ((ppldd_dev = open("/dev/" PPLDD_DEVICE, O_RDONLY)) == -1)
-		die("open /dev/" PPLDD_DEVICE);
-
-	init_leds();
-	led_on(LOADLEDNUM);
-
-	while (1) {
-		gettimeofday(&tv, NULL);
-		/* load avg */
-		while ((tv.tv_sec % 60)*1000000L + tv.tv_usec + (ld = load_delay()) < 59000000L)
-		{
-			usleep(ld);
-			led_tog(LOADLEDNUM);
-			/* outb(ledtime(), PPPORT); */
-			usleep((ld < 1000000L) ? ld : 1000000L);
-			led_tog(LOADLEDNUM);
-			/* n*100 => 1/n; 100 => 1; 50 => 2; 20 => 5; 10 => 10; 5 => 20; ~0 => 59 (+1 = 60) */
-			gettimeofday(&tv, NULL);
-		}
-		usleep(60000000L - (tv.tv_sec % 60)*1000000L - tv.tv_usec);
-		/* users */
-		users();
-		/* ping time */
-		led_on(PINGLEDNUM);
-		i = pingstat();
-		if (i >= 0)
-		{
-			if (i > 5000)
-				usleep(5000000L);
-			else
-				usleep(i * 1000L);
-			led_off(PINGLEDNUM);
-		}
-		/* temp limit */
-#ifdef TEMPWARN
-		if (temp() > TEMPWARN)
-		{
-			led_on(TEMPLEDNUM);
-		}
-		else
-		{
-			led_off(TEMPLEDNUM);
-		}
-#endif
-		/* mail */
-		if (checkfile(MAILFILE))
-		{
-			led_on(MAILLEDNUM);
-		}
-		else
-		{
-			led_off(MAILLEDNUM);
-		}
-	}
-	/* hmm, what're we doing here? */
-	return(-1);
+	if ((Dev = open("/dev/" PPLDD_DEVICE, O_RDONLY)) == -1)
+		die("open /dev/%s: %m", PPLDD_DEVICE);
 }
 
-void die(const char *err)
+void fini()
 {
-	fprintf(stderr, "%s: %s: %m\n", progname, err);
-	close(ppldd_dev);
+	close(Dev);
+}
+
+void die(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	fprintf(stderr, "pplddd: ");
+	vfprintf(stderr, fmt, args);
+	fprintf(stderr, "\n");
+	va_end(args);
+	fini();
 	exit(1);
 }
 
-inline void led_on(int led)
+#define MAX(X, Y) ({ typeof(X) _x = X; typeof(Y) _y = Y; _x >= _y ? _x : _y; })
+#define MIN(X, Y) ({ typeof(X) _x = X; typeof(Y) _y = Y; _x <= _y ? _x : _y; })
+
+static inline void led_ctl(int led, int req)
 {
-	if (ioctl(ppldd_dev, PPLDD_IOC_LED_ON, led) == -1)
-		die("ioctl LED_ON");
+	if (ioctl(Dev, req, led) == -1)
+		die("ppldd ioctl %d: %m", req);
 }
-inline void led_off(int led)
+#define led_set(LED, VAL) 	led_ctl(LED, (VAL) ? PPLDD_IOC_LED_ON : PPLDD_IOC_LED_OFF)
+#define led_tog(LED) 		led_ctl(LED, PPLDD_IOC_LED_TOG)
+#define led_on(LED) 		led_set(LED, 1)
+#define led_off(LED) 		led_set(LED, 0)
+
+static struct event *Events = NULL;
+struct timeval Now;
+
+void schedule()
 {
-	if (ioctl(ppldd_dev, PPLDD_IOC_LED_OFF, led) == -1)
-		die("ioctl LED_OFF");
+	while (Events)
+	{
+		gettimeofday(&Now, NULL);
+		if (timercmp(&Events->when, &Now, >))
+		{
+			struct timeval delta;
+			timersub(&Events->when, &Now, &delta);
+			struct timespec sleep = { delta.tv_sec, 1000*delta.tv_usec };
+			if (nanosleep(&sleep, NULL) != 0)
+				die("nanosleep: %m");
+			gettimeofday(&Now, NULL);
+		}
+		struct event *e = Events;
+		Events = e->next;
+		e->next = NULL;
+		e->fn(e);
+	}
+	die("schedule: no scheduled events");
 }
-inline void led_tog(int led)
+
+void add_event(struct event *ev)
 {
-	if (ioctl(ppldd_dev, PPLDD_IOC_LED_TOG, led) == -1)
-		die("ioctl LED_TOG");
+	if (ev->next)
+		die("trying to re-add event");
+
+	struct event **e = &Events;
+	while (*e && timercmp(&(*e)->when, &ev->when, <))
+		e = &(*e)->next;
+	ev->next = *e;
+	*e = ev;
+}
+
+void add_event_in(struct event *ev, unsigned long usec)
+{
+	struct timeval delta = { usec / 1000000, usec % 1000000 };
+	timeradd(&Now, &delta, &ev->when);
+	return add_event(ev);
 }
 
 #define INIT_LED_DELAY 125000L
@@ -146,6 +143,8 @@ void init_leds()
 	led_tog(led-1);
 }
 
+/********************************************************** data gathering */
+
 int checkfile(char *filename)
 {
 	struct stat s;
@@ -161,119 +160,147 @@ int checkfile(char *filename)
 int loadavg()
 {
 	FILE *f;
-	int la = 0, c;
+	float la;
 
 	if (!(f = fopen(LOADAVGFILE, "r")))
-	{
-		perror(LOADAVGFILE);
-		return 0;
-	}
-	while (((c = fgetc(f)) != ' ') && (c != EOF));
-	while (((c = fgetc(f)) != ' ') && (c != EOF))
-	{
-		if (c != '.')
-		{
-			la *= 10;
-			la += c - '0';
-		}
-	}
+		die("open %s: %m", LOADAVGFILE);
+	if (fscanf(f, "%*f %f %*f ", &la) < 1)
+		die("read %s: parse error", LOADAVGFILE);
 	fclose(f);
-	return la;
-}
-
-inline long load_delay()
-{
-	int la = loadavg();
-	return la ? 100000000L / la : 100000000L;
+	return 100*la;
 }
 
 int temp()
 {
 	FILE *f;
-	int t = 0, c;
+	int t;
+	static bool temp_failed = false;
 
 	if (!(f = fopen(TEMPFILE, "r")))
 	{
-		perror(TEMPFILE);
-		return 0;
-	}
-	/*
-	do {
-		c = fgetc(f);
-		if (c == EOF)
+		if (!temp_failed)
 		{
-			fprintf(stderr, "Error parsing %s\n", TEMPFILE);
-			return 0;
+			fprintf(stderr, "pplddd: open %s: %m\n", TEMPFILE);
+			temp_failed = true;
 		}
-		if (c == ' ')
-			i++;
-	} while (i < 2);
-	*/
-
-	while (('0' <= (c = fgetc(f))) && (c <= '9') && (c != EOF))
-	{
-		t *= 10;
-		t += c - '0';
+		return -1;
 	}
+	temp_failed = false;
+	if (fscanf(f, "%d", &t) < 1)
+		die("read %s: parse error", TEMPFILE);
 	fclose(f);
 	return t;
 }
 
-void users()
+int user_idle_time(struct utmp *u)
+{
+	struct stat ttystat;
+	char tty[strlen("/dev/") + strlen(u->ut_line) + 1];
+	sprintf(tty, "/dev/%s", u->ut_line);
+	if (stat(tty, &ttystat) == -1)
+		return -1;
+	return Now.tv_sec - ttystat.st_atime;
+}
+
+int users()
 {
 	struct utmp *u;
-	struct stat ttystat;
-	time_t t = time(NULL);
+	int me = 0;
+	int count = 0;
 
 	setutent();
-	while ((u = getutent())) {
-		if ((u->ut_type == USER_PROCESS) && (u->ut_user[0]) && strcmp(u->ut_user, "dylan"))
+	while ((u = getutent()))
+		if ((u->ut_type == USER_PROCESS) && (u->ut_user[0]))
 		{
-			char tty[strlen("/dev/") + strlen(u->ut_line) + 1];
-			int idle = 0;
-			strcpy(tty, "/dev/");
-			strcpy(tty+strlen("/dev/"), u->ut_line);
-			if (stat(tty, &ttystat) == -1)
-				fprintf(stderr, "stat(%s): %m\n", tty);
-			else
-				idle = t - ttystat.st_atime;
-
-			led_on(USERSLEDNUM);
-			usleep(idle <= (5*60) ? 50000L : ((idle >= 100*60) ? 1000000L : (500L*idle)/3));
-			led_off(USERSLEDNUM);
-			usleep(250000L);
+			if (!strcmp(u->ut_user, USERNAME))
+				me++;
+			count++;
 		}
-	}
 	endutent();
-	led_off(USERSLEDNUM);
+	return count - MIN(me, 1);
 }
 
 int pingstat()
 {
 	FILE *f;
-	int tt=0;
-	char s[256], *p;
+	float t, tt = 0;
+	char s[256];
 
 	if (!(f = popen(PINGPROG, "r")))
-	{
-		perror(PINGPROG);
-		return 0;
-	}
+		die("ping '%s': %m", PINGPROG);
 	while (fgets(s, 255, f))
-	{
-		if ((p = strstr(s, "is alive (")))
-		{
-			int t = 0;
-			for (p += 10; (p < s + 255) && (((*p <= '9') && (*p >= '0')) || (*p == '.')); p++)
-			{
-				if (*p != '.')
-				{
-					t *= 10;
-					t += *p - '0';
-				}
-			}
+		if (sscanf(s, "%*[0-9.] is alive (%f ms)", &t) == 1)
 			tt += t;
-		}
+	if (pclose(f))
+		return -1;
+	return 10 * tt;
+}
+
+/********************************************************** running */
+
+void pingdone(struct event *event)
+{
+	led_off(PINGLEDNUM);
+}
+
+void minutely(struct event *event)
+{
+	static struct event minutely_event = { .fn = minutely };
+	static struct event pingdone_event = { .fn = pingdone };
+
+#if USERSLEDNUM
+	led_set(USERSLEDNUM, users());
+#endif
+
+#if PINGLEDNUM
+	if (!pingdone_event.next)
+	{
+		led_on(PINGLEDNUM);
+		int ping = pingstat();
+		if (ping >= 0)
+			add_event_in(&pingdone_event, 1000 * MIN(ping, 5000));
 	}
-	return pclose(f) ? -1 : tt;
+#endif
+
+#if TEMPLEDNUM
+	led_set(TEMPLEDNUM, temp() > TEMPWARN);
+#endif
+#if MAILLEDNUM
+	led_set(MAILLEDNUM, checkfile(MAILFILE));
+#endif
+
+	minutely_event.when.tv_sec = Now.tv_sec - (Now.tv_sec % 60) + 60;
+	minutely_event.when.tv_usec = 0;
+	add_event(&minutely_event);
+}
+
+void loadblink(struct event *event)
+{
+	static struct event loadblink_event = { .fn = loadblink };
+	static int phase = 0;
+	static long ld;
+	static time_t last_ld = 0;
+
+	led_tog(LOADLEDNUM);
+	phase = !phase;
+
+	if (Now.tv_sec > last_ld + 20)
+	{
+		last_ld = Now.tv_sec;
+		ld = 100000000L / MAX(loadavg(), 1);
+	}
+
+	add_event_in(&loadblink_event, MIN(ld, phase ? 1000000 : 60000000));
+}
+
+int main(int argc, char **argv)
+{
+	init();
+	init_leds();
+
+	led_on(LOADLEDNUM);
+
+	minutely(NULL);
+	loadblink(NULL);
+	schedule();
 }

@@ -1,38 +1,34 @@
 LOCAL_CC=gcc
-LOCAL_CFLAGS=-Wall -g
-
-DEST_MOD=/lib/modules/misc
-DEST_BIN=/usr/bin
-DEST_SBIN=/usr/sbin
+LOCAL_CFLAGS=-Wall -g -D_GNU_SOURCE=1
 
 all: ppldc pplddd ppldd.ko
 
 #ppldd.o: ppldd.c /usr/include/linux/version.h
 #	$(CC) $(MODCFLAGS) -c $<
 
-%: %.o
-	$(CC) -o $@ $<
+pplddd: pplddd.o
+ppldc: ppldc.o
 
 %.o: %.c ppldd.h
-	$(CC) $(CFLAGS) -c $<
+	$(LOCAL_CC) $(LOCAL_CFLAGS) -c $<
+
+%: %.o
+	$(LOCAL_CC) $(LOCAL_LDFLAGS) -o $@ $<
 
 clean:
 	rm -f *.o ppldc pplddd
 
-install: $(DEST_BIN)/ppldc $(DEST_SBIN)/pplddd ppldd.ko
+install: install-ppldc install-pplddd ppldd.ko
 	make -C /usr/src/linux SUBDIRS=$(PWD) modules_install
 #	install ppldc /usr/bin/ppldc
 #	install pplddd /usr/sbin/pplddd
 #	install ppldd.o /lib/modules/misc/ppldd.o
 
-#$(DEST_MOD)/ppldd.o: ppldd.o
-#	install $< $@
+install-ppldc: ppldc
+	install $< /usr/bin
 
-$(DEST_BIN)/ppldc: ppldc
-	install $< $@
-
-$(DEST_SBIN)/pplddd: pplddd
-	install $< $@
+install-pplddd: pplddd
+	install $< /home/dylan/bin
 
 ppldd.ko: ppldd.c /usr/src/linux/include/linux/version.h
 	make -C /usr/src/linux SUBDIRS=$(PWD) modules

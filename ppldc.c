@@ -86,7 +86,6 @@ int parse_leds(const char *p)
 {
 	ppldd_led_stat_t leds;
 	char *c;
-	int i;
 
 	/* if (((p[0] >= '0' && p[0] <= '8') || (p[0] >= 'a' XXX )) && !p[1])
 		return 1 << (p[0] - '1'); */
