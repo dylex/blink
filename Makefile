@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -g -D_GNU_SOURCE=1
 
-all: ppldc pplddd
+all: blink1c blink1d
 
 clean:
-	rm -f *.o ppldc pplddd
+	rm -f *.o blink1c blink1d
