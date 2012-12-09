@@ -1,7 +1,14 @@
 CC=gcc
-CFLAGS=-Wall -g -D_GNU_SOURCE=1
+CFLAGS=-O -Wall -g -D_GNU_SOURCE=1
 
-all: blink1c blink1d
+FILES=blink1d loadavg activity blink1
+
+blink1d: $(addsuffix .o,$(FILES))
 
 clean:
 	rm -f *.o blink1c blink1d
+
+.depend:
+	gcc -MM $(addsuffix .c,$(FILES)) > $@
+
+include .depend
