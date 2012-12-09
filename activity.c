@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
@@ -22,7 +23,7 @@ static inline color_t color_interp(color_t s, interval_t l, color_t e, interval_
 	return e + d*r/l;
 }
 
-static void rgb_add(rgb_t o, const rgb_t i)
+static inline void rgb_add(rgb_t o, const rgb_t i)
 {
 	unsigned c;
 	for_rgb (c)
@@ -33,7 +34,14 @@ static void segment_interp(rgb_t o, const struct segment *s, interval_t r)
 {
 	unsigned c;
 	for_rgb (c)
-		o[c] = color_add(o[c], color_interp(s->start[c], s->len, s->end[c], r));
+		o[c] = color_interp(s->start[c], s->len, s->end[c], r);
+}
+
+static void segment_interp_add(rgb_t o, const struct segment *s, interval_t r)
+{
+	rgb_t t;
+	segment_interp(t, s, r);
+	rgb_add(o, t);
 }
 
 static struct segment Current;
@@ -87,8 +95,8 @@ static void active_segment(struct segment *o)
 	for_activity (a, Active_timed)
 	{
 		t += a->rem;
-		segment_interp(o->start, &a->seg, t);
-		segment_interp(o->end, &a->seg, t-o->len);
+		segment_interp_add(o->start, &a->seg, t);
+		segment_interp_add(o->end, &a->seg, t-o->len);
 	}
 }
 
@@ -108,6 +116,7 @@ interval_t active_run(int blink)
 
 void active_pop(interval_t t)
 {
+	printf("pop %hu\n", t);
 	if (Current.len)
 	{
 		segment_interp(Current.start, &Current, Current.len-t);

@@ -3,9 +3,8 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "types.h"
 
-typedef uint16_t interval_t;
-#define INTERVAL_SECOND	((interval_t)100)
 typedef uint8_t color_t;
 #define COLOR_MAX	((color_t)~0)
 typedef color_t rgb_t[3];
