@@ -60,7 +60,7 @@ static void load_blink(struct activity *a)
 	a->seg.len = Load_update.rem+1;
 	color_cpy(a->seg.start, a->seg.end);
 	if (l < LOAD_LOW)
-		color_set(a->seg.end, 0);
+		color_cpy(a->seg.end, color_zero);
 	else if (l > LOAD_HIGH)
 		color_cpy(a->seg.end, Load_color);
 	else
@@ -68,7 +68,7 @@ static void load_blink(struct activity *a)
 		if (color_cmp(a->seg.start, Load_color))
 			color_cpy(a->seg.end, Load_color);
 		else
-			color_set(a->seg.end, 0);
+			color_cpy(a->seg.end, color_zero);
 		if (l > 4*INTERVAL_SECOND*100/LOAD_UPDATE)
 			a->seg.len = 4*INTERVAL_SECOND*100/l;
 	}
