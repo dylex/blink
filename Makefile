@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-O -Wall -g -D_GNU_SOURCE=1
 
-FILES=blink1d loadavg activity notify watch blink1
+FILES=blink1d mail loadavg activity notify watch blink1
 
 blink1d: $(addsuffix .o,$(FILES))
 

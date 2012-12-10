@@ -11,7 +11,7 @@
 #define LOAD_COLOR	{ 0, 0, COLOR_MAX/2 }
 
 loadavg_t Loadavg[3];
-static const rgb_t Load_color = LOAD_COLOR;
+static const color_t Load_color = LOAD_COLOR;
 
 static loadavg_t load_read(char **s)
 {
@@ -58,17 +58,17 @@ static void load_blink(struct activity *a)
 {
 	loadavg_t l = Loadavg[LOAD_WHICH];
 	a->seg.len = Load_update.rem+1;
-	rgbcpy(a->seg.start, a->seg.end);
+	color_cpy(a->seg.start, a->seg.end);
 	if (l < LOAD_LOW)
-		rgbset(a->seg.end, 0);
+		color_set(a->seg.end, 0);
 	else if (l > LOAD_HIGH)
-		rgbcpy(a->seg.end, Load_color);
+		color_cpy(a->seg.end, Load_color);
 	else
 	{
-		if (rgbcmp(a->seg.start, Load_color))
-			rgbcpy(a->seg.end, Load_color);
+		if (color_cmp(a->seg.start, Load_color))
+			color_cpy(a->seg.end, Load_color);
 		else
-			rgbset(a->seg.end, 0);
+			color_set(a->seg.end, 0);
 		if (l > 4*INTERVAL_SECOND*100/LOAD_UPDATE)
 			a->seg.len = 4*INTERVAL_SECOND*100/l;
 	}

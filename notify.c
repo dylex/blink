@@ -1,7 +1,9 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 #include <limits.h>
+#include <errno.h>
 
 #include "watch.h"
 #include "notify.h"
@@ -28,44 +30,37 @@ int notify_rm(struct notify *n)
 	return 0;
 }
 
-static int inotify_read(void *buf, size_t len)
-{
-	ssize_t r = read(INotify_fd, buf, len);
-	if (r == 0)
-		return 0;
-	if (r < 0)
-	{
-		fprintf(stderr, "inotify read: %m\n");
-		return -1;
-	}
-	if (r != len)
-	{
-		fprintf(stderr, "inotify read: %zd\n", r);
-		return -2;
-	}
-	return 1;
-}
-
 static void notify_run(struct watch *w, uint8_t events)
 {
 	union {
 		struct inotify_event ev;
 		char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
 	} evbuf;
-	if (inotify_read(&evbuf.ev, sizeof evbuf.ev) <= 0)
-		return;
-	if (evbuf.ev.len > sizeof(evbuf) - sizeof(evbuf.ev))
+	ssize_t r = read(INotify_fd, evbuf.buf, sizeof(evbuf));
+	if (r < 0)
 	{
-		fprintf(stderr, "inotify len: %u\n", evbuf.ev.len);
+		if (errno == EAGAIN)
+			return;
+		fprintf(stderr, "inotify read: %m\n");
 		return;
 	}
-	if (evbuf.ev.len && inotify_read(evbuf.ev.name, evbuf.ev.len) <= 0)
-		return;
+	while (r)
+	{
+		size_t l = sizeof(evbuf.ev) + evbuf.ev.len;
+		r -= l;
+		if (r < 0)
+		{
+			fprintf(stderr, "inotify read: %zd\n", r);
+			return;
+		}
 
-	struct notify *n;
-	for_hlist (n, Notify_list)
-		if (n->wd == evbuf.ev.wd)
-			n->fun(n, &evbuf.ev);
+		struct notify *n;
+		for_hlist (n, Notify_list)
+			if (n->wd == evbuf.ev.wd)
+				n->fun(n, &evbuf.ev);
+
+		memmove(evbuf.buf, &evbuf.buf[l], r);
+	}
 }
 
 static struct watch Notify_watch = { .events = WATCH(IN), .fun = &notify_run };

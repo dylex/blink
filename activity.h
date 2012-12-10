@@ -4,20 +4,15 @@
 #include <stdint.h>
 #include <string.h>
 #include "types.h"
+#include "list.h"
 
-typedef uint8_t color_t;
-#define COLOR_MAX	((color_t)~0)
-typedef color_t rgb_t[3];
+static inline void color_cpy(color_t d, const color_t s)
+	{ memcpy(d, s, sizeof(color_t)); }
 
-#define for_rgb(c) for (c = 0; c < 3; c++)
+static inline void color_set(color_t d, uint8_t v)
+	{ memset(d, v, sizeof(color_t)); }
 
-static inline void rgbcpy(rgb_t d, const rgb_t s)
-	{ memcpy(d, s, sizeof(rgb_t)); }
-
-static inline void rgbset(rgb_t d, color_t v)
-	{ memset(d, v, sizeof(rgb_t)); }
-
-static inline int rgbcmp(const rgb_t d, const rgb_t s)
+static inline int color_cmp(const color_t d, const color_t s)
 { 
 	int x;
 	if ((x = *(const uint16_t *)d-*(const uint16_t *)s))
@@ -26,7 +21,7 @@ static inline int rgbcmp(const rgb_t d, const rgb_t s)
 }
 
 struct segment {
-	rgb_t start, end;
+	color_t start, end;
 	interval_t len;
 };
 
@@ -37,10 +32,14 @@ struct activity {
 	activity_fn *fun;
 
 	interval_t rem;
-	struct activity *next;
+	HLIST_NEXT(struct activity);
 };
 
 void activity_add(struct activity *);
+void activity_rm(struct activity *);
+
+void base_add(const color_t);
+void base_rm(const color_t);
 
 interval_t active_run(int);
 void active_pop(interval_t);

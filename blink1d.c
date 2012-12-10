@@ -1,12 +1,15 @@
 #include <unistd.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
 
 #include "blink1.h"
 #include "activity.h"
+#include "notify.h"
 #include "watch.h"
 #include "loadavg.h"
+#include "mail.h"
 
 static int Blink1 = -1;
 
@@ -19,8 +22,18 @@ int main(int argc, char **argv)
 		// return 1;
 	}
 
-	notify_init();
+	const char *h = getenv("HOME");
+	if (h && chdir(h) < 0)
+		fprintf(stderr, "chdir(%s): %m\n", h);
+
+	if (notify_init() < 0)
+	{
+		fprintf(stderr, "notify_init: %m\n");
+		return 1;
+	}
 	loadavg_init();
+	if (mail_init() < 0)
+		fprintf(stderr, "mail_init: %m\n");
 
 	blink1_set(Blink1, 0, 0, 0);
 	while (1)

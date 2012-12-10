@@ -5,103 +5,126 @@
 #include "blink1.h"
 #include "activity.h"
 
-#define for_activity(A, LIST) for (A = (LIST); A; A = A->next)
-#define for_activity_p(AP, LIST) for (AP = &(LIST); *AP; AP = &(*AP)->next)
+typedef int lcolor_t[COLOR_COUNT];
 
-static struct activity *Active_fixed, *Active_timed;
+static HLIST_HEAD(struct activity) Active;
+static lcolor_t Base;
 
-static inline color_t color_add(color_t x, color_t y)
-{
-	unsigned z = x + y;
-	return z > COLOR_MAX ? COLOR_MAX : z;
-}
-
-static inline color_t color_interp(color_t s, interval_t l, color_t e, interval_t r)
-{
-	assert(l && r <= l);
-	signed d = s - e;
-	return e + d*r/l;
-}
-
-static inline void rgb_add(rgb_t o, const rgb_t i)
+static void l_color(color_t o, const lcolor_t i)
 {
 	unsigned c;
-	for_rgb (c)
-		o[c] = color_add(o[c], i[c]);
+	for_color (c) {
+		if (i[c] > COLOR_MAX)
+			o[c] = COLOR_MAX;
+		else if (i[c] < 0)
+			o[c] = 0;
+		else
+			o[c] = i[c];
+	}
 }
 
-static void segment_interp(rgb_t o, const struct segment *s, interval_t r)
+static inline int interp(int s, interval_t l, int e, interval_t r)
+{
+	assert(r <= l);
+	return e + (s-e)*r/l;
+}
+
+static inline void color_add(lcolor_t o, const color_t i)
 {
 	unsigned c;
-	for_rgb (c)
-		o[c] = color_interp(s->start[c], s->len, s->end[c], r);
+	for_color (c)
+		o[c] += i[c];
 }
 
-static void segment_interp_add(rgb_t o, const struct segment *s, interval_t r)
+static inline void color_sub(lcolor_t o, const color_t i)
 {
-	rgb_t t;
+	unsigned c;
+	for_color (c)
+		o[c] -= i[c];
+}
+
+static void segment_interp(color_t o, const struct segment *s, interval_t r)
+{
+	unsigned c;
+	for_color (c)
+		o[c] = interp(s->start[c], s->len, s->end[c], r);
+}
+
+static void segment_interp_add(lcolor_t o, const struct segment *s, interval_t r)
+{
+	color_t t;
 	segment_interp(t, s, r);
-	rgb_add(o, t);
+	color_add(o, t);
 }
 
 static struct segment Current;
 
 static void segment_run(int blink, const struct segment *s)
 {
-	if (rgbcmp(Current.start, s->start))
+	if (color_cmp(Current.start, s->start))
 		blink1_set(blink, s->start[0], s->start[1], s->start[2]);
-	if (s->len && rgbcmp(s->end, s->start))
+	if (s->len && color_cmp(s->end, s->start))
 		blink1_fade(blink, s->len, s->end[0], s->end[1], s->end[2]);
 	Current = *s;
 }
 
 void activity_add(struct activity *a)
 {
+	struct activity **p;
 	assert(!a->next);
-	if (a->seg.len)
+	a->rem = a->seg.len;
+	for_hlist_p (p, Active)
 	{
-		struct activity **p;
-		a->rem = a->seg.len;
-		for_activity_p (p, Active_timed)
-		{
-			if ((*p)->rem > a->rem)
-				break;
-			a->rem -= (*p)->rem;
-		}
-		if ((a->next = *p))
-			a->next->rem -= a->rem;
-		*p = a;
+		if ((*p)->rem > a->rem)
+			break;
+		a->rem -= (*p)->rem;
 	}
-	else
-	{
-		a->rem = 0;
-		a->next = Active_fixed;
-		Active_fixed = a;
-	}
+	if (*p)
+		(*p)->rem -= a->rem;
+	hlist_ins(a, *p);
+}
+
+void activity_rm(struct activity *a)
+{
+	if (a->next)
+		a->next->rem += a->rem;
+	a->rem = 0;
+	hlist_del(a);
+}
+
+void base_add(const color_t c)
+{
+	color_add(Base, c);
+}
+
+void base_rm(const color_t c)
+{
+	color_sub(Base, c);
 }
 
 static void active_segment(struct segment *o)
 {
-	struct activity *a;
-	for_activity (a, Active_fixed)
-	{
-		rgb_add(o->start, a->seg.start);
-		rgb_add(o->end, a->seg.end);
-	}
-	if (!Active_timed)
-		return;
-	o->len = Active_timed->rem;
+	lcolor_t start, end;
+	memcpy(start, Base, sizeof(lcolor_t));
+	memcpy(end, Base, sizeof(lcolor_t));
+	struct activity *a = Active;
+	if (a)
+		o->len = a->rem;
 	interval_t t = 0;
-	for_activity (a, Active_timed)
+	while (a)
 	{
 		t += a->rem;
-		segment_interp_add(o->start, &a->seg, t);
-		segment_interp_add(o->end, &a->seg, t-o->len);
+		segment_interp_add(start, &a->seg, t);
+		segment_interp_add(end, &a->seg, t-o->len);
+		a = a->next;
 	}
+	l_color(o->start, start);
+	l_color(o->end, end);
 }
 
 static void activity_done(struct activity *a)
 {
+	hlist_del(a);
 	if (a->fun)
 		a->fun(a);
 }
@@ -122,13 +145,11 @@ void active_pop(interval_t t)
 		segment_interp(Current.start, &Current, Current.len-t);
 		Current.len -= t;
 	}
-	struct activity *a = Active_timed;
+	struct activity *a = Active;
 	if (!a)
 		return;
 	assert(t <= a->rem);
 	if ((a->rem -= t))
 		return;
-	Active_timed = a->next;
-	a->next = NULL;
 	activity_done(a);
 }
