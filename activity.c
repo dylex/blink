@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include "blink1.h"
 #include "activity.h"
@@ -152,4 +153,16 @@ void active_pop(interval_t t)
 	if ((a->rem -= t))
 		return;
 	activity_done(a);
+}
+
+void activity_then(struct activity *a)
+{
+	struct activity_then *at = (struct activity_then *)a;
+	activity_add(at->then);
+}
+
+void activity_then_free(struct activity *a)
+{
+	activity_then(a);
+	free(a);
 }

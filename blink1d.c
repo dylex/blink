@@ -10,7 +10,7 @@
 #include "watch.h"
 #include "loadavg.h"
 #include "mail.h"
-#include "control.h"
+#include "command.h"
 
 static int Blink1 = -1;
 
@@ -35,8 +35,8 @@ int main(int argc, char **argv)
 	loadavg_init();
 	if (mail_init() < 0)
 		fprintf(stderr, "mail_init: %m\n");
-	if (control_init() < 0)
-		fprintf(stderr, "control_init: %m\n");
+	if (command_init() < 0)
+		fprintf(stderr, "command_init: %m\n");
 
 	blink1_set(Blink1, 0, 0, 0);
 	while (1)

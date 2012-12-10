@@ -22,10 +22,18 @@ struct activity {
 void activity_add(struct activity *);
 void activity_rm(struct activity *);
 
+struct activity_then {
+	struct activity act;
+	struct activity *then;
+};
+
 void base_add(const color_t);
 void base_rm(const color_t);
 
 interval_t active_run(int);
 void active_pop(interval_t);
+
+activity_fn activity_then;
+activity_fn activity_then_free;
 
 #endif
