@@ -1,0 +1,7 @@
+blink(1) daemon for control and system monitoring
+
+blinkd is a daemon for controlling blink(1) which can multiplex different
+sources for blink(1) activity (additively).  It includes a control socket with
+a command-line interface (blink), a load-average blinker, a maildir monitor,
+and other things I've found useful.  It currently has no configuration so
+you'll have to edit the code if you want to change or add new features.
