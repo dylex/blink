@@ -4,11 +4,6 @@
 #include "types.h"
 #include "list.h"
 
-struct segment {
-	color_t start, end;
-	interval_t len;
-};
-
 struct activity;
 typedef void activity_fn(struct activity *);
 struct activity {
@@ -33,6 +28,7 @@ void base_rm(const color_t);
 interval_t active_run(int);
 void active_pop(interval_t);
 
+#define activity_free ((activity_fn *)&free)
 activity_fn activity_then;
 activity_fn activity_then_free;
 

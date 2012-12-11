@@ -41,9 +41,11 @@ int main(int argc, char **argv)
 	blink1_set(Blink1, 0, 0, 0);
 	while (1)
 	{
+		/*
 		struct timeval t;
 		gettimeofday(&t, NULL);
 		printf("%lu.%06lu\n", t.tv_sec, t.tv_usec);
+		*/
 
 		interval_t d = active_run(Blink1);
 		if (watch_run(d) < 0)

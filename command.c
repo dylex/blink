@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -27,12 +28,34 @@ static void command_color_set(color_t s)
 	color_cpy(Command_color, s);
 }
 
+static void command_sequence(struct segment *seq, unsigned n)
+{
+	unsigned i;
+	struct activity_then *a;
+	a = calloc(n, sizeof(*a));
+	if (!a)
+	{
+		fprintf(stderr, "command_sequence(%u): %m\n", n);
+		return;
+	}
+	a[0].act.seg = seq[n-1];
+	a[0].act.fun = activity_free;
+	for (i = 1; i < n; i ++)
+	{
+		a[i].act.seg = seq[n-i-1];
+		a[i].act.fun = &activity_then;
+		a[i].then = &a[i-1].act;
+	}
+	activity_add(&a[n-1].act);
+}
+
 static void command_run(struct watch *w, uint8_t events)
 {
 	union {
 		char buf[256];
 		enum command cmd;
 		struct command_color cmd_color;
+		struct command_sequence cmd_seq;
 	} cmdbuf;
 
 	ssize_t z = recv(Command_sock, cmdbuf.buf, sizeof(cmdbuf), 0);
@@ -73,6 +96,10 @@ static void command_run(struct watch *w, uint8_t events)
 			for_color (c)
 				ct[c] = Command_color[c] - ct[c];
 			command_color_set(ct);
+			break;
+
+		case COMMAND_SEQUENCE:
+			command_sequence(cmdbuf.cmd_seq.seq, (z - sizeof(cmdbuf.cmd_seq))/sizeof(*cmdbuf.cmd_seq.seq));
 			break;
 	}
 #undef CHECK_LEN

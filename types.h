@@ -25,4 +25,9 @@ static inline int color_cmp(const color_t d, const color_t s)
 
 static const color_t color_zero;
 
+struct segment {
+	color_t start, end;
+	interval_t len;
+};
+
 #endif

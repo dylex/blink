@@ -1,5 +1,6 @@
 CC=gcc
 CFLAGS=-O -Wall -g -D_GNU_SOURCE=1
+LDFLAGS=-lm
 
 FILES=blink1d mail loadavg command activity notify watch blink1
 

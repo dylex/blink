@@ -1,34 +1,251 @@
 #include <argp.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "command.h"
 
 static int Command_sock = -1;
 
 static const struct argp_option options[] = {
-	{"set",	's', "[=+-]COLOR", 0, 		"set, add, or remove current color", 1},
-
 	{} 
 };
 
-static int parse_color(color_t c, const char *s)
+static int parse_interval(interval_t *i, const char *s)
 {
-	if (sscanf(s, "#%02hhx%02hhx%02hhx ", &c[0], &c[1], &c[2]) == 3)
-		return 1;
-	if (sscanf(s, "%hhd,%hhd,%hhd ", &c[0], &c[1], &c[2]) == 3)
-		return 1;
-	if (!strcmp(s, "0"))
+	char *e = NULL;
+	double x = strtod(s, &e);
+	if (!e || x < 0)
+		return -1;
+	if (e == s)
+		x = 1;
+	switch (*e)
 	{
-		color_cpy(c, color_zero);
-		return 1;
+		case 's':
+			e++;
+			break;
+			
+		case 'm':
+			e++;
+			x *= 60;
+			break;
 	}
-	return 0;
+	*i = ceil(INTERVAL_SECOND*x);
+	return e - s;
 }
 
-error_t parse(int key, char *optarg, struct argp_state *state)
+static int8_t hex1(char c)
+{
+	switch (c)
+	{
+		case '0' ... '9': return c - '0';
+		case 'a' ... 'f': return 10 + c - 'a';
+		case 'A' ... 'F': return 10 + c - 'A';
+		default: return -1;
+	}
+}
+
+static int parse_hex_color(color_t c, const char *s)
+{
+	if (*s == '#')
+		s ++;
+	uint8_t h[2*COLOR_COUNT];
+	unsigned i = 0;
+	while (i < 2*COLOR_COUNT)
+	{
+		int8_t x = hex1(s[i]);
+		if (x < 0)
+			break;
+		h[i++] = x;
+	}
+	if (i >= 2*COLOR_COUNT)
+	{
+		for_color (i)
+			c[i] = h[2*i] << 4 | h[2*i+1];
+		return 2*COLOR_COUNT;
+	}
+	if (i >= COLOR_COUNT)
+	{
+		for_color (i)
+			c[i] = h[i] << 4 | h[i];
+		return COLOR_COUNT;
+	}
+	return -1;
+}
+
+struct token {
+	enum {
+		PARSE_NULL = 0,
+		PARSE_COLOR,
+		PARSE_INTERVAL,
+		PARSE_BREAK
+	} t;
+	union {
+		color_t c;
+		interval_t i;
+	};
+};
+
+static int parse_token(struct token *r, const char *s, struct argp_state *state)
+{
+	const char *p = s;
+	while (isspace(*p))
+		p++;
+	switch (*p)
+	{
+		case 0:
+			r->t = PARSE_NULL;
+			return p - s;
+
+		case ',':
+		case ';':
+			r->t = PARSE_BREAK;
+			return p - s + 1;
+
+		case '#':
+		hex_color: {
+			r->t = PARSE_COLOR;
+			int l = parse_hex_color(r->c, p);
+			if (l <= 0)
+			{
+				if (state)
+					argp_error(state, "invalid hex color: %s", s);
+				return l;
+			}
+			return p - s + l;
+		}
+
+		interval: {
+			r->t = PARSE_INTERVAL;
+			int l = parse_interval(&r->i, p);
+			if (l <= 0)
+			{
+				if (state)
+					argp_error(state, "invalid interval: %s", s);
+				return l;
+			}
+			return p - s + l;
+		}
+
+		color: goto hex_color;
+	}
+
+	size_t l = strspn(p, "0123456789");
+	switch (p[l])
+	{
+		case 'a' ... 'f':
+		case 'A' ... 'F':
+			goto hex_color;
+		case '.':
+		case 's':
+		case 'm':
+			goto interval;
+	}
+	switch (r->t)
+	{
+		case PARSE_COLOR:    goto color;
+		case PARSE_INTERVAL: goto interval;
+		default: break;
+	}
+	if (l == COLOR_COUNT || l == 2*COLOR_COUNT)
+		goto hex_color;
+	else
+		goto interval;
+}
+
+static int process_args(int an, char **av, struct argp_state *state)
+{
+	int ai;
+	enum {
+		START,
+		LEN,
+		END,
+		NEXT
+	} s = START;
+	struct command_sequence cmd = { COMMAND_SEQUENCE };
+	unsigned si = 0;
+	color_t c = {};
+
+	for (ai = 0; ai < an; ai ++)
+	{
+		const char *p = av[ai];
+		while (*p) {
+			struct token t;
+			switch (s)
+			{
+				case START:
+				case END:
+					t.t = PARSE_COLOR;
+					break;
+				case LEN:
+					t.t = PARSE_INTERVAL;
+					break;
+				default:
+					t.t = PARSE_NULL;
+			}
+
+			int r = parse_token(&t, p, state);
+			if (r <= 0)
+				break;
+			p += r;
+			if (t.t == PARSE_COLOR)
+				color_cpy(c, t.c);
+
+			switch (s)
+			{
+				case END:
+					color_cpy(cmd.seq[si].end, c);
+					if (t.t == PARSE_COLOR)
+					{
+						s = NEXT;
+						continue;
+					}
+
+				case NEXT:
+					si ++;
+					if (t.t == PARSE_BREAK)
+					{
+						s = START;
+						continue;
+					}
+
+				case START:
+					if (si >= CMD_SEQ_MAX_SEG)
+						argp_error(state, "sequence too long");
+					color_cpy(cmd.seq[si].start, c);
+					if (t.t == PARSE_COLOR)
+					{
+						s = LEN;
+						continue;
+					}
+
+				case LEN:
+					if (t.t == PARSE_INTERVAL)
+					{
+						cmd.seq[si].len = t.i;
+						s = END;
+						continue;
+					}
+			}
+			argp_error(state, "unexpected: %s", p);
+		}
+	}
+	if (s < END)
+		argp_error(state, "incomplete sequence specification");
+	if (s == END)
+		color_cpy(cmd.seq[si].end, c);
+	si ++;
+
+	if (send(Command_sock, &cmd, (char *)&cmd.seq[si] - (char *)&cmd, 0) < 0)
+		argp_failure(state, 3, errno, "send command");
+
+	return ai;
+}
+
+static error_t process(int key, char *optarg, struct argp_state *state)
 {
 	switch (key)
 	{
@@ -43,19 +260,26 @@ error_t parse(int key, char *optarg, struct argp_state *state)
 			close(Command_sock);
 			break;
 
-		case 's': {
+		case ARGP_KEY_ARG: {
 			struct command_color cmd;
 			switch (optarg[0])
 			{
 				case '=': cmd.cmd = COMMAND_COLOR_SET; break;
 				case '+': cmd.cmd = COMMAND_COLOR_ADD; break;
 				case '-': cmd.cmd = COMMAND_COLOR_SUB; break;
-				default: argp_error(state, "Set color must start with one of '=', '+', or '-'");
+				default: return ARGP_ERR_UNKNOWN;
 			}
-			if (parse_color(cmd.color, &optarg[1]) < 1)
-				argp_error(state, "Invalid color: %s", &optarg[1]);
+			if (parse_hex_color(cmd.color, &optarg[1]) <= 0)
+				argp_error(state, "invalid color: %s", &optarg[1]);
 			if (send(Command_sock, &cmd, sizeof(cmd), 0) < 0)
 				argp_failure(state, 3, errno, "send command");
+		}	break;
+
+		case ARGP_KEY_ARGS: {
+			int r = process_args(state->argc - state->next, state->argv + state->next, state);
+			if (r <= 0)
+				return ARGP_ERR_UNKNOWN;
+			state->next += r;
 		}	break;
 
 		default:
@@ -66,7 +290,16 @@ error_t parse(int key, char *optarg, struct argp_state *state)
 
 static const struct argp argp_parser = {
 	.options = options,
-	.parser = &parse
+	.parser = &process,
+	.args_doc = "[[=+-]COLOR] [SEGMENT [[,] ...]]",
+	.doc = "Send commands to blink1d\v"
+		"  [=+-]COLOR: set, add, or remove the fixed COLOR\n"
+		"  SEGMENT: part of a sequence of color changes\n"
+		"    COLOR LEN: turn on COLOR for LEN\n"
+		"    COLOR LEN COLOR: fade from COLOR to COLOR in LEN\n"
+		"    LEN COLOR: fade from previous color to COLOR\n"
+		"  COLOR: an [#]RGB or [#]RRGGBB hex triplet\n"
+		"  LEN: SECONDS[s] or MINUTESm\n"
 };
 
 int main(int argc, char **argv)

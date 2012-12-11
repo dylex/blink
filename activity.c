@@ -140,7 +140,6 @@ interval_t active_run(int blink)
 
 void active_pop(interval_t t)
 {
-	printf("pop %hu\n", t);
 	if (Current.len)
 	{
 		segment_interp(Current.start, &Current, Current.len-t);
