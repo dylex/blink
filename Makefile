@@ -2,11 +2,11 @@ CC=gcc
 CFLAGS=-O -Wall -g -D_GNU_SOURCE=1
 LDFLAGS=-lm
 
-FILES=blink1d mail loadavg command activity notify watch blink1
+FILES=blinkd mail loadavg command activity notify watch blink1
 
-default: blink1d blink
+default: blinkd blink
 
-blink1d: $(addsuffix .o,$(FILES))
+blinkd: $(addsuffix .o,$(FILES))
 blink: blink.o
 
 clean:
