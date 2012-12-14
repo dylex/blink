@@ -5,7 +5,7 @@
 
 #define LOAD_FILE	"/proc/loadavg"
 #define LOAD_UPDATE	(60*INTERVAL_SECOND)
-#define LOAD_WHICH	0
+#define LOAD_WHICH	1
 #define LOAD_LOW	0
 #define LOAD_HIGH	1000
 #define LOAD_COLOR	{ 0, 0, COLOR_MAX/2 }

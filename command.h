@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-#define COMMAND_SOCKET	"/tmp/.blink1.ctl"
+#define COMMAND_SOCKET	"/tmp/.blink.ctl"
 
 enum command {
 	COMMAND_NULL = 0,

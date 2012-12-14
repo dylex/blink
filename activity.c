@@ -41,7 +41,8 @@ static inline void color_sub(lcolor_t o, const color_t i)
 {
 	unsigned c;
 	for_color (c)
-		o[c] -= i[c];
+		if ((o[c] -= i[c]) < 0)
+			o[c] = 0;
 }
 
 static void segment_interp(color_t o, const struct segment *s, interval_t r)

@@ -266,7 +266,8 @@ static error_t process(int key, char *optarg, struct argp_state *state)
 			{
 				case '=': cmd.cmd = COMMAND_COLOR_SET; break;
 				case '+': cmd.cmd = COMMAND_COLOR_ADD; break;
-				case '-': cmd.cmd = COMMAND_COLOR_SUB; break;
+				case '-':
+				case '_': cmd.cmd = COMMAND_COLOR_SUB; break;
 				default: return ARGP_ERR_UNKNOWN;
 			}
 			if (parse_hex_color(cmd.color, &optarg[1]) <= 0)
