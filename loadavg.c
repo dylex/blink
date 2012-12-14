@@ -57,7 +57,7 @@ static struct activity Load_update = { { .len = LOAD_UPDATE }, .fun = &load_upda
 static void load_blink(struct activity *a)
 {
 	loadavg_t l = Loadavg[LOAD_WHICH];
-	a->seg.len = Load_update.rem+1;
+	a->seg.len = LOAD_UPDATE; // Load_update.rem+1;
 	color_cpy(a->seg.start, a->seg.end);
 	if (l < LOAD_LOW)
 		color_cpy(a->seg.end, color_zero);

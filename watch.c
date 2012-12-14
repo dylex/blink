@@ -12,6 +12,7 @@ static int Watch_max = 0;
 
 static void watch_set(struct watch *w)
 {
+	assert(w->fd >= 0);
 	if (w->fd >= Watch_max)
 		Watch_max = w->fd + 1;
 	enum watch_event e;
@@ -50,10 +51,10 @@ int watch_run(interval_t t)
 	for_event (e)
 		set[e] = Watch_sets[e];
 	struct timeval tv = { t / INTERVAL_SECOND, t % INTERVAL_SECOND * (1000000L / INTERVAL_SECOND) };
-	int r = select(Watch_max, &set[WATCH_IN], &set[WATCH_OUT], &set[WATCH_EXC], t ? &tv : NULL);
+	int r = select(Watch_max, &set[WATCH_IN], &set[WATCH_OUT], &set[WATCH_EXC], t == INTERVAL_INF ? NULL : &tv);
 	if (r < 0)
 		return r;
-	if (t)
+	if (t != INTERVAL_INF)
 		t -= tv.tv_sec * INTERVAL_SECOND + tv.tv_usec / (1000000L / INTERVAL_SECOND);
 	active_pop(t);
 

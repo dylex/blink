@@ -27,6 +27,8 @@ static void l_color(color_t o, const lcolor_t i)
 static inline int interp(int s, interval_t l, int e, interval_t r)
 {
 	assert(r <= l);
+	if (!l)
+		return s;
 	return e + (s-e)*r/l;
 }
 
@@ -133,7 +135,7 @@ static void activity_done(struct activity *a)
 
 interval_t active_run(int blink)
 {
-	struct segment s = {};
+	struct segment s = { .len = INTERVAL_INF };
 	active_segment(&s);
 	segment_run(blink, &s);
 	return s.len;

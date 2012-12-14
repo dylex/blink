@@ -11,6 +11,7 @@
 #include "watch.h"
 #include "loadavg.h"
 #include "mail.h"
+#include "pinger.h"
 #include "command.h"
 
 static int Blink1 = -1;
@@ -55,6 +56,7 @@ int main(int argc, char **argv)
 	loadavg_init();
 	if (mail_init() < 0)
 		fprintf(stderr, "mail_init: %m\n");
+	pinger_init();
 	if (command_init() < 0)
 		fprintf(stderr, "command_init: %m\n");
 
