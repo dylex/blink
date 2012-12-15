@@ -99,7 +99,7 @@ static void command_run(struct watch *w, uint8_t events)
 			break;
 
 		case COMMAND_SEQUENCE:
-			command_sequence(cmdbuf.cmd_seq.seq, (z - sizeof(cmdbuf.cmd_seq))/sizeof(*cmdbuf.cmd_seq.seq));
+			command_sequence(cmdbuf.cmd_seq.seq, (z - offsetof(struct command_sequence, seq))/sizeof(*cmdbuf.cmd_seq.seq));
 			break;
 	}
 #undef CHECK_LEN
