@@ -4,7 +4,9 @@
 #include <time.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <argp.h>
 
+#include "main.h"
 #include "blink1.h"
 #include "activity.h"
 #include "notify.h"
@@ -14,6 +16,7 @@
 #include "pinger.h"
 #include "command.h"
 
+bool Debug;
 static int Blink1 = -1;
 
 static void stop(int sig) __attribute__((noreturn));
@@ -37,15 +40,39 @@ static void die(const char *msg, ...)
 	stop(0);
 }
 
+static const struct argp_option Options[] =
+	{ { "debug", 'd', 0, 0, "print out blink activity" }
+	, {} };
+
+static error_t parse_opt(int key, char *optarg, struct argp_state *state)
+{
+	switch (key) {
+		case 'd':
+			Debug = true;
+			return 0;
+
+		default:
+			return ARGP_ERR_UNKNOWN;
+	}
+}
+
+static const struct argp Argp = {
+	.options = Options,
+	.parser = &parse_opt
+};
+
 int main(int argc, char **argv)
 {
-	if (signal(SIGTERM, &stop) == SIG_ERR ||
-			signal(SIGINT, &stop) == SIG_ERR)
-		die("signal: %m\n");
+	if ((errno = argp_parse(&Argp, argc, argv, 0, 0, 0)))
+		die("argp_parse: %m\n");
 
 	Blink1 = blink1_open(NULL);
 	if (Blink1 < 0)
 		die("blink1_open: %m\n");
+
+	if (signal(SIGTERM, &stop) == SIG_ERR ||
+			signal(SIGINT, &stop) == SIG_ERR)
+		die("signal: %m\n");
 
 	const char *h = getenv("HOME");
 	if (h && chdir(h) < 0)

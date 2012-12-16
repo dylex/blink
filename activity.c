@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "blink1.h"
+#include "main.h"
 #include "activity.h"
 
 typedef int lcolor_t[COLOR_COUNT];
@@ -66,10 +67,31 @@ static struct segment Current;
 static void segment_run(int blink, const struct segment *s)
 {
 	if (color_cmp(Current.start, s->start))
+	{
+		if (Debug)
+			printf("       %02X%02X%02X\n", s->start[0], s->start[1], s->start[2]);
 		blink1_set(blink, s->start[0], s->start[1], s->start[2]);
+	}
 	if (s->len && color_cmp(s->end, s->start))
+	{
+		if (Debug)
+			printf("%5u->%02X%02X%02X\n", s->len, s->end[0], s->end[1], s->end[2]);
 		blink1_fade(blink, s->len, s->end[0], s->end[1], s->end[2]);
+	}
 	Current = *s;
+}
+
+static interval_t activity_rem(struct activity *act)
+{
+	interval_t t = 0;
+	struct activity *a;
+	for_hlist (a, Active)
+	{
+		t += a->rem;
+		if (a == act)
+			return t;
+	}
+	return INTERVAL_INF;
 }
 
 void activity_add(struct activity *a)
@@ -88,8 +110,10 @@ void activity_add(struct activity *a)
 	hlist_ins(a, *p);
 }
 
-void activity_rm(struct activity *a)
+void activity_rm(struct activity *a, color_t c)
 {
+	if (c)
+		segment_interp(c, &a->seg, activity_rem(a));
 	if (a->next)
 		a->next->rem += a->rem;
 	a->rem = 0;
@@ -143,6 +167,8 @@ interval_t active_run(int blink)
 
 void active_pop(interval_t t)
 {
+	if (Debug)
+		printf("%5u\n", t);
 	if (Current.len)
 	{
 		segment_interp(Current.start, &Current, Current.len-t);

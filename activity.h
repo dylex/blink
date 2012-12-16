@@ -15,7 +15,7 @@ struct activity {
 };
 
 void activity_add(struct activity *);
-void activity_rm(struct activity *);
+void activity_rm(struct activity *, color_t);
 
 struct activity_then {
 	struct activity act;

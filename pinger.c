@@ -7,6 +7,7 @@
 #include "watch.h"
 #include "pinger.h"
 
+#define PINGER_HOST	"66.114.66.1"
 #define PINGER_WAIT	(60*INTERVAL_SECOND)
 #define PINGER_COLOR	RED
 
@@ -70,10 +71,9 @@ static void pinger_res(struct watch *w, uint8_t events)
 		return;
 	}
 
-	activity_rm(&Pinger_act);
+	activity_rm(&Pinger_act, Pinger_act.seg.start);
 	uint8_t c = pinger_color(p.time);
-	Pinger_act.seg.start[PINGER_COLOR] =
-		Pinger_act.seg.end[PINGER_COLOR] = c;
+	Pinger_act.seg.end[PINGER_COLOR] = c;
 	Pinger_act.seg.len = PINGER_WAIT/(c/20+1);
 	activity_add(&Pinger_act);
 }
@@ -103,13 +103,14 @@ static void pinger_run(struct activity *a)
 		}
 	}
 
+	color_cpy(Pinger_act.seg.start, Pinger_act.seg.end);
 	Pinger_act.seg.len = PINGER_WAIT;
 	activity_add(&Pinger_act);
 }
 
 void pinger_init()
 {
-	Ping.host = inet_addr("66.114.66.1");
+	Ping.host = inet_addr(PINGER_HOST);
 	Pinger_act.fun = &pinger_run;
 	activity_add(&Pinger_act);
 }
