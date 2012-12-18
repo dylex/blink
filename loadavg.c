@@ -8,10 +8,9 @@
 #define LOAD_WHICH	1
 #define LOAD_LOW	0
 #define LOAD_HIGH	1000
-#define LOAD_COLOR	{ 0, 0, COLOR_MAX/2 }
+#define LOAD_COLOR	BLUE
 
 loadavg_t Loadavg[3];
-static const color_t Load_color = LOAD_COLOR;
 
 static loadavg_t load_read(char **s)
 {
@@ -60,15 +59,15 @@ static void load_blink(struct activity *a)
 	a->seg.len = LOAD_UPDATE; // Load_update.rem+1;
 	color_cpy(a->seg.start, a->seg.end);
 	if (l < LOAD_LOW)
-		color_cpy(a->seg.end, color_zero);
+		a->seg.end[LOAD_COLOR] = 0;
 	else if (l > LOAD_HIGH)
-		color_cpy(a->seg.end, Load_color);
+		a->seg.end[LOAD_COLOR] = COLOR_MAX;
 	else
 	{
-		if (color_cmp(a->seg.start, Load_color))
-			color_cpy(a->seg.end, Load_color);
+		if (a->seg.start[LOAD_COLOR])
+			a->seg.end[LOAD_COLOR] = 0;
 		else
-			color_cpy(a->seg.end, color_zero);
+			a->seg.end[LOAD_COLOR] = COLOR_MAX/2;
 		if (l > 4*INTERVAL_SECOND*100/LOAD_UPDATE)
 			a->seg.len = 4*INTERVAL_SECOND*100/l;
 	}
