@@ -10,10 +10,6 @@
 
 static int Command_sock = -1;
 
-static const struct argp_option options[] = {
-	{} 
-};
-
 static int parse_interval(interval_t *i, const char *s)
 {
 	char *e = NULL;
@@ -245,8 +241,18 @@ static int process_args(int an, char **av, struct argp_state *state)
 	return ai;
 }
 
+static const struct argp_option Options[] = 
+	{ { "mask", 'm', "COLOR", 0, "mask set color by COLOR [FFF]" }
+	, { "set", 's', "COLOR", 0, "set COLOR & mask" }
+	, { "on", 'i', "COLOR", 0, "equivalent to -m COLOR -s FFF" }
+	, { "off", 'o', "COLOR", 0, "equivalent to -m COLOR -s 000" }
+	, {}
+	};
+
 static error_t process(int key, char *optarg, struct argp_state *state)
 {
+	static struct command_color_mask cmd = { .mask = { COLOR_MAX, COLOR_MAX, COLOR_MAX } };
+	enum color c;
 	switch (key)
 	{
 		case ARGP_KEY_INIT: {
@@ -260,8 +266,25 @@ static error_t process(int key, char *optarg, struct argp_state *state)
 			close(Command_sock);
 			break;
 
-		case ARGP_KEY_ARG: {
-			struct command_color cmd;
+		case 'i':
+		case 'o':
+			for_color (c)
+				cmd.color[c] = (key == 'i' ? COLOR_MAX : 0);
+		case 'm':
+			if (parse_hex_color(cmd.mask, optarg) <= 0)
+				argp_error(state, "invalid color: %s", optarg);
+			if (key == 'm')
+				break;
+
+		case 's':
+			cmd.cmd = COMMAND_COLOR_SET;
+			if (key == 's' && parse_hex_color(cmd.color, optarg) <= 0)
+				argp_error(state, "invalid color: %s", optarg);
+			if (send(Command_sock, &cmd, sizeof(struct command_color_mask), 0) < 0)
+				argp_failure(state, 3, errno, "send command");
+			break;
+
+		case ARGP_KEY_ARG:
 			switch (optarg[0])
 			{
 				case '=': cmd.cmd = COMMAND_COLOR_SET; break;
@@ -272,9 +295,9 @@ static error_t process(int key, char *optarg, struct argp_state *state)
 			}
 			if (parse_hex_color(cmd.color, &optarg[1]) <= 0)
 				argp_error(state, "invalid color: %s", &optarg[1]);
-			if (send(Command_sock, &cmd, sizeof(cmd), 0) < 0)
+			if (send(Command_sock, &cmd, sizeof(struct command_color), 0) < 0)
 				argp_failure(state, 3, errno, "send command");
-		}	break;
+			break;
 
 		case ARGP_KEY_ARGS: {
 			int r = process_args(state->argc - state->next, state->argv + state->next, state);
@@ -290,7 +313,7 @@ static error_t process(int key, char *optarg, struct argp_state *state)
 }
 
 static const struct argp argp_parser = {
-	.options = options,
+	.options = Options,
 	.parser = &process,
 	.args_doc = "[[=+-]COLOR] [SEGMENT [[,] ...]]",
 	.doc = "Send commands to blink1d\v"

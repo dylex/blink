@@ -16,16 +16,9 @@ static color_t Command_color;
 
 static void command_color_set(color_t s)
 {
-	color_t p = {}, m = {};
-	unsigned c;
-	for_color (c)
-		if (s[c] > Command_color[c])
-			p[c] = s[c] - Command_color[c];
-		else
-			m[c] = Command_color[c] - s[c];
-	base_rm(m);
-	base_add(p);
+	base_rm(Command_color);
 	color_cpy(Command_color, s);
+	base_add(Command_color);
 }
 
 static void command_sequence(struct segment *seq, unsigned n)
@@ -55,6 +48,7 @@ static void command_run(struct watch *w, uint8_t events)
 		char buf[256];
 		enum command cmd;
 		struct command_color cmd_color;
+		struct command_color_mask cmd_color_mask;
 		struct command_sequence cmd_seq;
 	} cmdbuf;
 
@@ -71,7 +65,7 @@ static void command_run(struct watch *w, uint8_t events)
 		return; \
 	}
 	CHECK_LEN(cmd);
-	unsigned c;
+	enum color c;
 	color_t ct = {};
 	if (z >= sizeof(cmdbuf.cmd_color))
 		color_cpy(ct, cmdbuf.cmd_color.color);
@@ -81,6 +75,9 @@ static void command_run(struct watch *w, uint8_t events)
 			break;
 
 		case COMMAND_COLOR_SET:
+			if (z >= sizeof(cmdbuf.cmd_color_mask))
+				for_color (c)
+					ct[c] = (ct[c] & cmdbuf.cmd_color_mask.mask[c]) | (Command_color[c] & ~cmdbuf.cmd_color_mask.mask[c]);
 			command_color_set(ct);
 			break;
 

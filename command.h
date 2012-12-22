@@ -18,6 +18,11 @@ struct command_color {
 	color_t color;
 };
 
+struct command_color_mask {
+	enum command cmd;
+	color_t color, mask;
+};
+
 #define CMD_SEQ_MAX_SEG 16
 struct command_sequence {
 	enum command cmd;
