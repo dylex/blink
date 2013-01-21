@@ -3,6 +3,7 @@ module System.Hardware.Blink1.Linux
   , openRawDev
   , openRawHID
   , openRawHIDs
+  , closeRaw
   ) where
 
 import Control.Exception (onException, bracket)
@@ -59,13 +60,20 @@ openRawHID = maybe
 -- | Search for and open all blink(1) hidraw devices
 openRawHIDs :: IO [Blink1Raw]
 openRawHIDs = mapM openRawDev =<< findRawDev
+
+writeRaw :: Blink1Raw -> [Word8] -> IO ()
+writeRaw (Blink1Raw d) x = do -- setFeature d x
+  let l = genericLength x
+  r <- withArray x $ \p -> fdWriteBuf d p l
+  when (r /= l) $ ioError $ mkIOError fullErrorType "Blink1Raw: short write" Nothing Nothing
+
+readRaw :: Blink1Raw -> Int -> IO [Word8]
+readRaw (Blink1Raw d) n = tail `liftM` getFeature d n
   
 closeRaw :: Blink1Raw -> IO ()
 closeRaw (Blink1Raw d) = closeFd d
 
 instance Blink1 Blink1Raw where
-  writeBlink1 (Blink1Raw d) x = do -- setFeature d x
-    let l = genericLength x
-    r <- withArray x $ \p -> fdWriteBuf d p l
-    when (r /= l) $ ioError $ mkIOError fullErrorType "Blink1Raw: short write" Nothing Nothing
-  readBlink1 (Blink1Raw d) n = getFeature d n
+  writeBlink1 = writeRaw
+  readBlink1 = readRaw
+  closeBlink1 = closeRaw

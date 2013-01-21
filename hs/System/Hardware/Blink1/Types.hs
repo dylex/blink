@@ -5,6 +5,8 @@ module System.Hardware.Blink1.Types
   , black
   , Delay(..)
   , Pos(..)
+  , EEPROMAddr(..)
+  , serialNumLen
   ) where
 
 import Data.Word (Word8)
@@ -40,3 +42,36 @@ newtype Pos = Pos Word8 deriving (Eq, Ord, Enum, Num)
 instance Bounded Pos where
   minBound = Pos 0
   maxBound = Pos 11
+
+data EEPROMAddr
+  = EEOSCCAL
+  | EEBootMode
+  | EESerialNum Word8
+  | EEPatternStart
+  deriving (Eq, Ord)
+
+serialNumLen :: Word8
+serialNumLen = 4
+
+instance Enum EEPROMAddr where
+  fromEnum EEOSCCAL = 0
+  fromEnum EEBootMode = 1
+  fromEnum (EESerialNum i) 
+    | i < serialNumLen = 2 + fromIntegral i
+    | otherwise = error "EEPROMAddr.fromEnum: invalid EESerialNum"
+  fromEnum EEPatternStart = 6
+  toEnum 0 = EEOSCCAL
+  toEnum 1 = EEBootMode
+  toEnum 6 = EEPatternStart
+  toEnum x 
+    | x >= 2 && x < 6 = EESerialNum (fromIntegral x-2)
+    | otherwise = error "EEPROMAddr.toEnum: invalid address"
+
+instance Bounded EEPROMAddr where
+  minBound = EEOSCCAL
+  maxBound = EEPatternStart
+
+data BootMode
+  = BootNormal
+  | BootNightLight
+  deriving (Eq, Ord, Enum, Bounded)

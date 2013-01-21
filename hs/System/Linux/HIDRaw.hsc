@@ -8,8 +8,7 @@ module System.Linux.HIDRaw
   ) where
 
 import Data.Bits ((.|.), shiftL)
-import Data.Int (Int16)
-import Data.Word (Word8, Word32)
+import Data.Word (Word8, Word16, Word32)
 import Foreign.C.Error
 import Foreign.C.Types
 import Foreign.Ptr (Ptr, castPtr)
@@ -24,8 +23,8 @@ import System.Posix.IOCtl
 
 data DevInfo = DevInfo 
   { devBustype :: Word32
-  , devVendor :: Int16
-  , devProduct :: Int16
+  , devVendor :: Word16
+  , devProduct :: Word16
   }
 
 instance Storable DevInfo where

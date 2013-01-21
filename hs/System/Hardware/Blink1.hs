@@ -10,13 +10,16 @@ module System.Hardware.Blink1
   , play
   , setPattern
   , getPattern
+  , getSerialNum
+  , setSerialNum
   ) where
 
 import Control.Concurrent (threadDelay)
 import Control.Monad (guard, liftM)
 import Data.Bits (shiftR, shiftL, (.|.))
 import Data.Char (chr, ord)
-import Data.Word (Word16)
+import Data.List (foldl')
+import Data.Word (Word16, Word32)
 import System.Hardware.Blink1.Class
 import System.Hardware.Blink1.Types
 
@@ -42,8 +45,7 @@ request :: Blink1 b => b -> Char -> [Word8] -> IO [Word8]
 request b c d = do
   command b c d
   threadDelay 50000 -- FIXME says the original
-  -- something is off-by-one, should only drop 1
-  (tail . tail) `liftM` readBlink1 b (succ msgLen)
+  tail `liftM` readBlink1 b (succ msgLen)
 
 getVersion :: Blink1 b => b -> IO (Char,Char)
 getVersion b = do
@@ -87,13 +89,25 @@ getPattern b p = do
   return (fi (i d1 `shiftL` 8 .|. i d2) / 100, RGB r g b)
   where i = fi :: Word8 -> Word16
 
-readEEPROM :: Blink1 b => b -> Word8 -> IO Word8
+eeaddr :: EEPROMAddr -> Word8
+eeaddr = fi . fromEnum
+
+readEEPROM :: Blink1 b => b -> EEPROMAddr -> IO Word8
 readEEPROM b a = do
-  _:_:v:_ <- request b 'e' [a]
+  _:_:v:_ <- request b 'e' [eeaddr a]
   return v
 
-writeEEPROM :: Blink1 b => b -> Word8 -> Word8 -> IO ()
-writeEEPROM b a v = command b 'E' [a, v]
+writeEEPROM :: Blink1 b => b -> EEPROMAddr -> Word8 -> IO ()
+writeEEPROM b a v = command b 'E' [eeaddr a, v]
+
+getSerialNum :: Blink1 b => b -> IO Word32
+getSerialNum b =
+  foldl' (\l -> (l `shiftL` 8 .|.) . fi) 0 `liftM` 
+    mapM (readEEPROM b . EESerialNum) [0..pred serialNumLen]
+
+setSerialNum :: Blink1 b => b -> Word32 -> IO ()
+setSerialNum b s = mapM_ w [0..pred serialNumLen] where
+  w i = writeEEPROM b (EESerialNum i) $ fi $ s `shiftR` (8*(3-fi i))
 
 test :: Blink1 b => b -> IO (Maybe Bool)
 test b = do
