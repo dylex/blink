@@ -42,12 +42,13 @@ request :: Blink1 b => b -> Char -> [Word8] -> IO [Word8]
 request b c d = do
   command b c d
   threadDelay 50000 -- FIXME says the original
-  tail `liftM` readBlink1 b (succ msgLen)
+  -- something is off-by-one, should only drop 1
+  (tail . tail) `liftM` readBlink1 b (succ msgLen)
 
 getVersion :: Blink1 b => b -> IO (Char,Char)
 getVersion b = do
   _:_:maj:min:_ <- request b 'v' []
-  return $ (chr (fi maj), chr (fi min))
+  return (chr (fi maj), chr (fi min))
 
 rgb :: RGB -> [Word8]
 rgb (RGB r g b) = [r,g,b]

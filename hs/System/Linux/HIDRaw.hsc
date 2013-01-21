@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses, ForeignFunctionInterface #-}
 -- | Minimal interface to hidraw ioctls, sufficient for blink(1)
 module System.Linux.HIDRaw
   ( DevInfo(..)
@@ -7,10 +7,13 @@ module System.Linux.HIDRaw
   , getFeature
   ) where
 
+import Data.Bits ((.|.), shiftL)
 import Data.Int (Int16)
 import Data.Word (Word8, Word32)
-import Foreign.C.Error (errnoToIOError, eOPNOTSUPP)
-import Foreign.C.Types (CInt)
+import Foreign.C.Error
+import Foreign.C.Types
+import Foreign.Ptr (Ptr, castPtr)
+import Foreign.Marshal.Array
 import Foreign.Storable
 import System.IO.Error (ioError)
 import System.Posix.Types (Fd)
@@ -45,9 +48,25 @@ instance IOControl HIDIOCGRAWINFO DevInfo where
 devInfo :: Fd -> IO DevInfo
 devInfo d = ioctl' d HIDIOCGRAWINFO
 
--- the ioctl package doesn't support these, so they're unimplemented for now
+-- the ioctl package doesn't support variable-length data, so we call them directly
+
+foreign import ccall unsafe "ioctl" c_ioctl :: CInt -> CInt -> Ptr () -> IO CInt
+
+ioctlLen :: Storable p => Fd -> CInt -> Int -> Ptr p -> IO ()
+ioctlLen f r l p 
+  | len > mask = ioError $ errnoToIOError "ioctlLen" eMSGSIZE Nothing Nothing
+  | otherwise = throwErrnoIfMinus1_ "ioctl" $ c_ioctl (fromIntegral f) (r .|. (len `shiftL` shift)) (castPtr p)
+  where 
+    len = fromIntegral $ l * sizeOf (ptrType p)
+    ptrType :: Ptr p -> p
+    ptrType _ = undefined
+    shift = #const _IOC_SIZESHIFT
+    mask = #const _IOC_SIZEMASK
+
 setFeature :: Fd -> [Word8] -> IO ()
-setFeature d _ = ioError $ errnoToIOError "System.Linux.HIDRaw.setFeature" eOPNOTSUPP Nothing Nothing
+setFeature d x = withArrayLen x $ ioctlLen d #{const HIDIOCSFEATURE(0)}
 
 getFeature :: Fd -> Int -> IO [Word8]
-getFeature d _ = ioError $ errnoToIOError "System.Linux.HIDRaw.getFeature" eOPNOTSUPP Nothing Nothing
+getFeature d l = allocaArray l $ \p -> do
+  ioctlLen d #{const HIDIOCGFEATURE(0)} l p
+  peekArray l p
