@@ -1,5 +1,5 @@
 Name:		blink1
-Version:	0.2
+Version:	0.2.1
 Author:		Dylan Simon
 Maintainer:     dylan@dylex.net
 License:        BSD3
@@ -16,12 +16,13 @@ Source-Repository head
     Location:   http://github.com/dylex/blink
 
 Flag usb
-    Description:        Enable libusb-based usb interface
+    Description:        Enable libusb-based usb backend
 
 Library
     Build-Depends:	base == 4.*
     Exposed-Modules:    System.Hardware.Blink1
     Other-Modules:      System.Hardware.Blink1.Types, System.Hardware.Blink1.Class
+    ghc-options:        -Wall -fno-warn-name-shadowing
 
     if os(linux)
         Build-Depends:	unix, ioctl

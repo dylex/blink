@@ -11,9 +11,8 @@ import Control.Monad
 import Data.List (isPrefixOf, genericLength)
 import Foreign.C.Error (errnoToIOError, eFTYPE) -- hack
 import Numeric (readHex)
-import System.IO.Error (ioError, mkIOError, fullErrorType, doesNotExistErrorType)
+import System.IO.Error (mkIOError, fullErrorType, doesNotExistErrorType)
 import System.Posix.IO
-import System.Posix.IOCtl
 import System.Posix.Directory (openDirStream, readDirStream, closeDirStream)
 import System.Posix.Types (Fd)
 import Foreign.Marshal.Array
@@ -43,13 +42,14 @@ findRawDev = pds dp hiddir where
       e <- readDirStream d
       if null e then return mzero else liftM2 mplus (f e) (r d)
   dp f | null (do
-      (_,':':vs) <- readHex f
-      (v,':':ps) <- readHex vs
+      (_,':':vs) <- rh f
+      (v,':':ps) <- rh vs
       guard (v == blink1Vendor)
-      (p,'.':_) <- readHex ps
+      (p,'.':_) <- rh ps
       guard (p == blink1Product)) = return mzero
     | otherwise = pds fp (hiddir ++ '/' : f ++ "/hidraw")
   fp f = return $ guard ("hidraw" `isPrefixOf` f) >> return f
+  rh = readHex
 
 -- | Search for and open the first blink(1) hidraw device
 openRawHID :: IO Blink1Raw

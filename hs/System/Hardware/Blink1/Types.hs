@@ -11,7 +11,7 @@ module System.Hardware.Blink1.Types
 
 import Data.Word (Word8)
 import Data.Fixed (Centi)
-import Numeric (showHex)
+import Numeric (showHex, readHex)
 
 data RGB = RGB { red, green, blue :: !Word8 }
 
@@ -26,6 +26,19 @@ showHex2 x
 instance Show RGB where
   showsPrec _ (RGB r g b) = showChar '#' . showHex2 r . showHex2 g . showHex2 b
 
+instance Read RGB where
+  readsPrec _ ('#':c) = rc2 c ++ rc1 c where
+    rc1 (r:g:b:s) = rc (0x11*) [r] [g] [b] s
+    rc1 _ = []
+    rc2 (r1:r2:g1:g2:b1:b2:s) = rc id [r1,r2] [g1,g2] [b1,b2] s
+    rc2 _ = []
+    rc f r g b s = do
+      (r,"") <- readHex r
+      (g,"") <- readHex g
+      (b,"") <- readHex b
+      return (RGB (f r) (f g) (f b), s)
+  readsPrec _ _ = []
+
 -- | time is counted in centiseconds
 newtype Delay = Delay { delayCentiseconds :: Centi } deriving (Eq, Ord, Num, Real, Fractional, RealFrac)
 
@@ -35,9 +48,13 @@ instance Bounded Delay where
 
 instance Show Delay where
   showsPrec p (Delay s) = showsPrec p s . showChar 's'
+instance Read Delay where
+  readsPrec p = map f . readsPrec p where
+    f (x,'s':s) = (Delay x, s)
+    f (x,s) = (Delay x, s)
 
 -- | positions are counted 0-11
-newtype Pos = Pos Word8 deriving (Eq, Ord, Enum, Num)
+newtype Pos = Pos Word8 deriving (Eq, Ord, Enum, Num, Show, Read)
 
 instance Bounded Pos where
   minBound = Pos 0
@@ -70,8 +87,3 @@ instance Enum EEPROMAddr where
 instance Bounded EEPROMAddr where
   minBound = EEOSCCAL
   maxBound = EEPatternStart
-
-data BootMode
-  = BootNormal
-  | BootNightLight
-  deriving (Eq, Ord, Enum, Bounded)

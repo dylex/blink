@@ -1,6 +1,6 @@
 module System.Hardware.Blink1
   ( RGB(..)
-  , Delay
+  , Delay(..)
   , Pos
 
   , getVersion

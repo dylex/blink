@@ -14,7 +14,6 @@ import Foreign.C.Types
 import Foreign.Ptr (Ptr, castPtr)
 import Foreign.Marshal.Array
 import Foreign.Storable
-import System.IO.Error (ioError)
 import System.Posix.Types (Fd)
 import System.Posix.IOCtl
 
