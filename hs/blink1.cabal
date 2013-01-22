@@ -25,7 +25,7 @@ Library
     ghc-options:        -Wall -fno-warn-name-shadowing
 
     if os(linux)
-        Build-Depends:	unix, ioctl
+        Build-Depends:	unix
         Exposed-Modules: System.Hardware.Blink1.Linux
         Other-Modules:	System.Linux.HIDRaw
 

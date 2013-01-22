@@ -11,14 +11,21 @@ import Data.Bits ((.|.), shiftL)
 import Data.Word (Word8, Word16, Word32)
 import Foreign.C.Error
 import Foreign.C.Types
-import Foreign.Ptr (Ptr, castPtr)
+import Foreign.Ptr (Ptr)
+import Foreign.Marshal.Alloc (alloca)
 import Foreign.Marshal.Array
 import Foreign.Storable
 import System.Posix.Types (Fd)
-import System.Posix.IOCtl
 
 #include <sys/ioctl.h>
 #include <linux/hidraw.h>
+
+-- the ioctl package doesn't support variable-length data, so we call them directly
+
+foreign import ccall unsafe "ioctl" c_ioctl :: CInt -> CInt -> Ptr a -> IO CInt
+
+ioctl :: Storable p => Fd -> CInt -> Ptr p -> IO ()
+ioctl f r p = throwErrnoIfMinus1_ "ioctl" $ c_ioctl (fromIntegral f) r p
 
 data DevInfo = DevInfo 
   { devBustype :: Word32
@@ -39,21 +46,13 @@ instance Storable DevInfo where
     #{poke struct hidraw_devinfo, vendor} p v
     #{poke struct hidraw_devinfo, product} p i
 
-data HIDIOCGRAWINFO = HIDIOCGRAWINFO
-instance IOControl HIDIOCGRAWINFO DevInfo where
-  ioctlReq _ = #const HIDIOCGRAWINFO
-
 devInfo :: Fd -> IO DevInfo
-devInfo d = ioctl' d HIDIOCGRAWINFO
-
--- the ioctl package doesn't support variable-length data, so we call them directly
-
-foreign import ccall unsafe "ioctl" c_ioctl :: CInt -> CInt -> Ptr () -> IO CInt
+devInfo d = alloca $ \p -> ioctl d #{const HIDIOCGRAWINFO} p >> peek p
 
 ioctlLen :: Storable p => Fd -> CInt -> Int -> Ptr p -> IO ()
 ioctlLen f r l p 
   | len > mask = ioError $ errnoToIOError "ioctlLen" eMSGSIZE Nothing Nothing
-  | otherwise = throwErrnoIfMinus1_ "ioctl" $ c_ioctl (fromIntegral f) (r .|. (len `shiftL` shift)) (castPtr p)
+  | otherwise = ioctl f (r .|. (len `shiftL` shift)) p
   where 
     len = fromIntegral $ l * sizeOf (ptrType p)
     ptrType :: Ptr p -> p
