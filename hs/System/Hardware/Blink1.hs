@@ -1,21 +1,22 @@
 module System.Hardware.Blink1
   ( RGB(..)
   , Delay(..)
-  , Pos
+  , PatternStep
 
   , getVersion
-  , set
-  , fade
-  , serverDown
-  , play
+  , setColor
+  , fadeToColor
+  , setServerDown
+  , playPattern
   , setPattern
   , getPattern
   , getSerialNum
   , setSerialNum
+  , testBlink1
   ) where
 
 import Control.Concurrent (threadDelay)
-import Control.Monad (guard, liftM)
+import Control.Monad (liftM)
 import Data.Bits (shiftR, shiftL, (.|.))
 import Data.Char (chr, ord)
 import Data.List (foldl')
@@ -60,30 +61,30 @@ delay d = [i $ t `shiftR` 8, i t] where
   t = truncate (100 * d) :: Word16
   i = fi :: Word16 -> Word8
 
-pos :: Pos -> [Word8]
+pos :: PatternStep -> [Word8]
 pos p = [fi (fromEnum p)]
 
 -- | set the given color now
-set :: Blink1 b => b -> RGB -> IO ()
-set b c = command b 'n' $ rgb c
+setColor :: Blink1 b => b -> RGB -> IO ()
+setColor b c = command b 'n' $ rgb c
 
-fade :: Blink1 b => b -> Delay -> RGB -> IO ()
-fade b d c = command b 'c' $ rgb c ++ delay d
+fadeToColor :: Blink1 b => b -> Delay -> RGB -> IO ()
+fadeToColor b d c = command b 'c' $ rgb c ++ delay d
 
 -- | enable/disable serverdown mode
-serverDown :: Blink1 b => b -> Bool -> Delay -> IO ()
-serverDown b o d = command b 'D' $ fi (fromEnum o) : delay d
+setServerDown :: Blink1 b => b -> Bool -> Delay -> IO ()
+setServerDown b o d = command b 'D' $ fi (fromEnum o) : delay d
 
 -- | stop or start playing the sequence at the given position
-play :: Blink1 b => b -> Maybe Pos -> IO ()
-play b Nothing = command b 'p' [0]
-play b (Just p) = command b 'p' $ 1 : pos p
+playPattern :: Blink1 b => b -> Maybe PatternStep -> IO ()
+playPattern b Nothing = command b 'p' [0]
+playPattern b (Just p) = command b 'p' $ 1 : pos p
 
 -- | set the sequence pattern for the given position
-setPattern :: Blink1 b => b -> Pos -> Delay -> RGB -> IO ()
+setPattern :: Blink1 b => b -> PatternStep -> Delay -> RGB -> IO ()
 setPattern b p d c = command b 'P' $ rgb c ++ delay d ++ pos p
 
-getPattern :: Blink1 b => b -> Pos -> IO (Delay, RGB)
+getPattern :: Blink1 b => b -> PatternStep -> IO (Delay, RGB)
 getPattern b p = do
   _:r:g:b:d1:d2:_ <- request b 'R' $ rgb black ++ delay 0 ++ pos p
   return (fi (i d1 `shiftL` 8 .|. i d2) / 100, RGB r g b)
@@ -109,7 +110,9 @@ setSerialNum :: Blink1 b => b -> Word32 -> IO ()
 setSerialNum b s = mapM_ w [0..pred serialNumLen] where
   w i = writeEEPROM b (EESerialNum i) $ fi $ s `shiftR` (8*(3-fi i))
 
-test :: Blink1 b => b -> IO (Maybe Bool)
-test b = do
-  x:y:u:_ <- request b '!' []
-  return $ guard (x == 0x55 && y == 0xAA) >> return (u /= 0)
+testBlink1 :: Blink1 b => b -> IO (Either [Word8] Bool)
+testBlink1 b = do
+  r <- request b '!' []
+  return $ case r of
+    0x55:0xAA:u:_ -> Right (u /= 0)
+    _ -> Left r

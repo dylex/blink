@@ -4,7 +4,7 @@ module System.Hardware.Blink1.Types
   , RGB(..)
   , black
   , Delay(..)
-  , Pos(..)
+  , PatternStep(..)
   , EEPROMAddr(..)
   , serialNumLen
   ) where
@@ -54,11 +54,11 @@ instance Read Delay where
     f (x,s) = (Delay x, s)
 
 -- | positions are counted 0-11
-newtype Pos = Pos Word8 deriving (Eq, Ord, Enum, Num, Show, Read)
+newtype PatternStep = PatternStep Word8 deriving (Eq, Ord, Enum, Num, Show, Read)
 
-instance Bounded Pos where
-  minBound = Pos 0
-  maxBound = Pos 11
+instance Bounded PatternStep where
+  minBound = PatternStep 0
+  maxBound = PatternStep 11
 
 data EEPROMAddr
   = EEOSCCAL
