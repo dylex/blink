@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving #-}
 module System.Hardware.Blink1.Types
   ( Word8
   , RGB(..)
@@ -48,10 +48,12 @@ instance Bounded Delay where
 
 instance Show Delay where
   showsPrec p (Delay s) = showsPrec p s . showChar 's'
+#if MIN_VERSION_base(4,4,0)
 instance Read Delay where
   readsPrec p = map f . readsPrec p where
     f (x,'s':s) = (Delay x, s)
     f (x,s) = (Delay x, s)
+#endif
 
 -- | positions are counted 0-11
 newtype PatternStep = PatternStep Word8 deriving (Eq, Ord, Enum, Num, Show, Read)
