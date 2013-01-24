@@ -20,6 +20,24 @@ data RGB = RGB { red, green, blue :: !Word8 }
 black :: RGB
 black = RGB 0 0 0
 
+constRGB :: Word8 -> RGB
+constRGB x = RGB x x x
+
+liftRGB :: (Word8 -> Word8) -> RGB -> RGB
+liftRGB f (RGB r g b) = RGB (f r) (f g) (f b)
+
+lift2RGB :: (Word8 -> Word8 -> Word8) -> RGB -> RGB -> RGB
+lift2RGB f (RGB rx gx bx) (RGB ry gy by) = RGB (f rx ry) (f gx gy) (f bx by)
+
+instance Num RGB where
+  x + y = lift2RGB (+) x y
+  x - y = lift2RGB (-) x y
+  x * y = lift2RGB (*) x y
+  negate x = liftRGB negate x
+  abs x = liftRGB abs x
+  signum x = liftRGB signum x
+  fromInteger i = constRGB (fromInteger i)
+
 showHex2 :: Word8 -> ShowS
 showHex2 x
   | x < 16 = showChar '0' . showHex x
@@ -27,7 +45,6 @@ showHex2 x
 
 instance Show RGB where
   showsPrec _ (RGB r g b) = showChar '#' . showHex2 r . showHex2 g . showHex2 b
-
 instance Read RGB where
   readsPrec _ ('#':c) = rc2 c ++ rc1 c where
     rc1 (r:g:b:s) = rc (0x11*) [r] [g] [b] s
