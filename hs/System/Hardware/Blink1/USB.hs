@@ -7,13 +7,11 @@ module System.Hardware.Blink1.USB
   ) where
 
 import Control.Monad
-import System.IO.Error (ioError, mkIOError, doesNotExistErrorType)
+import System.IO.Error (mkIOError, doesNotExistErrorType)
 import System.USB
-import Bindings.Libusb.Descriptors (c'LIBUSB_CLASS_PER_INTERFACE, c'LIBUSB_CLASS_HID)
 import qualified Data.Vector as V
 import qualified Data.ByteString as BS (pack, unpack)
 import qualified Data.Text as Text (unpack)
-import System.Hardware.Blink1.Types
 import System.Hardware.Blink1.Class
 
 newtype Blink1USB = Blink1USB DeviceHandle
@@ -22,7 +20,6 @@ findUSBDev :: Ctx -> IO (V.Vector Device)
 findUSBDev ctx = V.filterM (return . f <=< getDeviceDesc) =<< getDevices ctx where
   f d = deviceVendorId d == blink1Vendor 
     && deviceProductId d == blink1Product 
-    && deviceClass d == c'LIBUSB_CLASS_PER_INTERFACE 
     && deviceNumConfigs d == 1
     -- ideally we should check the interfaces, but blink(1) only has one
 

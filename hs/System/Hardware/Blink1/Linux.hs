@@ -18,7 +18,6 @@ import System.Posix.Types (Fd)
 import Foreign.Marshal.Array
 
 import System.Linux.HIDRaw
-import System.Hardware.Blink1.Types
 import System.Hardware.Blink1.Class
 
 newtype Blink1Raw = Blink1Raw Fd

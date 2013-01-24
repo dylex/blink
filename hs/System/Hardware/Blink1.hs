@@ -1,5 +1,5 @@
 module System.Hardware.Blink1
-  ( RGB(..)
+  ( RGB(..), RGB8
   , Delay(..)
   , PatternStep
 
@@ -20,7 +20,7 @@ import Control.Monad (liftM)
 import Data.Bits (shiftR, shiftL, (.|.))
 import Data.Char (chr, ord)
 import Data.List (foldl')
-import Data.Word (Word16, Word32)
+import Data.Word
 import System.Hardware.Blink1.Class
 import System.Hardware.Blink1.Types
 
@@ -53,7 +53,7 @@ getVersion b = do
   _:_:maj:min:_ <- request b 'v' []
   return (chr (fi maj), chr (fi min))
 
-rgb :: RGB -> [Word8]
+rgb :: RGB8 -> [Word8]
 rgb (RGB r g b) = [r,g,b]
 
 delay :: Delay -> [Word8]
@@ -65,10 +65,10 @@ pos :: PatternStep -> [Word8]
 pos p = [fi (fromEnum p)]
 
 -- | set the given color now
-setColor :: Blink1 b => b -> RGB -> IO ()
+setColor :: Blink1 b => b -> RGB8 -> IO ()
 setColor b c = command b 'n' $ rgb c
 
-fadeToColor :: Blink1 b => b -> Delay -> RGB -> IO ()
+fadeToColor :: Blink1 b => b -> Delay -> RGB8 -> IO ()
 fadeToColor b d c = command b 'c' $ rgb c ++ delay d
 
 -- | enable/disable serverdown mode
@@ -81,10 +81,10 @@ playPattern b Nothing = command b 'p' [0]
 playPattern b (Just p) = command b 'p' $ 1 : pos p
 
 -- | set the sequence pattern for the given position
-setPattern :: Blink1 b => b -> PatternStep -> Delay -> RGB -> IO ()
+setPattern :: Blink1 b => b -> PatternStep -> Delay -> RGB8 -> IO ()
 setPattern b p d c = command b 'P' $ rgb c ++ delay d ++ pos p
 
-getPattern :: Blink1 b => b -> PatternStep -> IO (Delay, RGB)
+getPattern :: Blink1 b => b -> PatternStep -> IO (Delay, RGB8)
 getPattern b p = do
   _:r:g:b:d1:d2:_ <- request b 'R' $ rgb black ++ delay 0 ++ pos p
   return (fi (i d1 `shiftL` 8 .|. i d2) / 100, RGB r g b)

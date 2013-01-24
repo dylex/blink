@@ -1,5 +1,6 @@
 module System.Hardware.Blink1.Class
   ( Blink1(..)
+  , Word8
   , blink1Vendor, blink1Product
   ) where
 
