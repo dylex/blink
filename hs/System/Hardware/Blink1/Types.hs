@@ -4,13 +4,15 @@ module System.Hardware.Blink1.Types
   , RGB(..)
   , black
   , Delay(..)
+  , second
   , PatternStep(..)
   , EEPROMAddr(..)
   , serialNumLen
   ) where
 
-import Data.Word (Word8)
-import Data.Fixed (Centi)
+import Control.Arrow ((***))
+import Data.Word (Word8, Word16)
+import Data.Fixed (HasResolution(..), Centi)
 import Numeric (showHex, readHex)
 
 data RGB = RGB { red, green, blue :: !Word8 }
@@ -39,21 +41,55 @@ instance Read RGB where
       return (RGB (f r) (f g) (f b), s)
   readsPrec _ _ = []
 
--- | time is counted in centiseconds
-newtype Delay = Delay { delayCentiseconds :: Centi } deriving (Eq, Ord, Num, Real, Fractional, RealFrac)
+-- | time is measured in centiseconds
+newtype Delay = Delay { delayCentiseconds :: Word16 } deriving (Bounded, Eq, Ord, Enum)
 
-instance Bounded Delay where
-  minBound = Delay 0
-  maxBound = Delay 655.36
+sec :: Num a => a
+sec = 100
+
+second :: Delay
+second = Delay sec
+
+-- This boiler-plate fixed-point is all possibly over-kill, but is hopefully at least unambiguous, and better than using Centi
+instance HasResolution Delay where
+  resolution _ = sec
+
+instance Num Delay where
+  Delay x + Delay y = Delay (x + y)
+  Delay x - Delay y = Delay (x - y)
+  Delay x * Delay y = Delay (x * y `div` sec) -- XXX: overflow
+  negate (Delay x) = Delay (negate x)
+  abs (Delay x) = Delay (abs x)
+  signum (Delay x) = Delay (signum x * sec)
+  fromInteger i = Delay (fromInteger i * sec)
+instance Real Delay where
+  toRational (Delay x) = toRational x / sec
+instance Fractional Delay where
+  Delay x / Delay y = Delay (x * sec `div` y) -- XXX: overflow
+  recip (Delay x) = Delay (sec * sec `div` x)
+  fromRational r = Delay (floor (r * sec))
+instance RealFrac Delay where
+  properFraction (Delay x) = fromIntegral *** Delay $ x `divMod` sec
+  truncate (Delay x) = fromIntegral (x `div` sec)
+  round (Delay x) = truncate (Delay (x + (pred sec `div` 2)))
+  ceiling (Delay x) = truncate (Delay (x + pred sec))
+  floor x = truncate x -- unsigned!
 
 instance Show Delay where
-  showsPrec p (Delay s) = showsPrec p s . showChar 's'
-#if MIN_VERSION_base(4,4,0)
+  showsPrec p d = showsPrec p (realToFrac d :: Centi) . showChar 's'
 instance Read Delay where
   readsPrec p = map f . readsPrec p where
-    f (x,'s':s) = (Delay x, s)
-    f (x,s) = (Delay x, s)
+    f (x,'s':s) = (realToFrac x, s)
+    f (x,'c':'s':s) = (Delay (floor x), s)
+    f (x,'m':'s':s) = (Delay (floor x `div` 10), s)
+    f (x,s) = (realToFrac (x ::
+#if MIN_VERSION_base(4,4,0)
+        Centi
+#else
+        Float
 #endif
+      ), s)
+
 
 -- | positions are counted 0-11
 newtype PatternStep = PatternStep Word8 deriving (Eq, Ord, Enum, Num, Show, Read)
