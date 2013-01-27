@@ -6,9 +6,6 @@
 #define LOAD_FILE	"/proc/loadavg"
 #define LOAD_UPDATE	(60*INTERVAL_SECOND)
 #define LOAD_WHICH	1
-#define LOAD_LOW	0
-#define LOAD_HIGH	1000
-#define LOAD_COLOR	BLUE
 
 loadavg_t Loadavg[3];
 
@@ -34,7 +31,7 @@ static loadavg_t load_read(char **s)
 	return x;
 }
 
-static void load_update(struct activity *a)
+static void load_update(struct activity *a, enum led led)
 {
 	FILE *f = fopen(LOAD_FILE, "r");
 	if (f)
@@ -48,36 +45,39 @@ static void load_update(struct activity *a)
 		for (i = 0; *p && i < sizeof(Loadavg)/sizeof(*Loadavg); i++)
 			Loadavg[i] = load_read(&p);
 	}
-	activity_add(a);
+	activity_add(a, led);
 }
 
-static struct activity Load_update = { { .len = LOAD_UPDATE }, .fun = &load_update };
+static struct activity Load_update = { 
+	{ .len = LOAD_UPDATE }, 
+	.fun = &load_update 
+};
 
-static void load_blink(struct activity *a)
+static void load_blink(struct activity *a, enum led led)
 {
 	loadavg_t l = Loadavg[LOAD_WHICH];
-	a->seg.len = LOAD_UPDATE; // Load_update.rem+1;
-	color_cpy(a->seg.start, a->seg.end);
-	if (l < LOAD_LOW)
-		a->seg.end[LOAD_COLOR] = 0;
-	else if (l > LOAD_HIGH)
-		a->seg.end[LOAD_COLOR] = COLOR_MAX;
+	enum led led_start = a->led_start;
+	a->led_start = a->led_end;
+	a->led_end = led_start;
+	if (l > 4*INTERVAL_SECOND*100/LOAD_UPDATE)
+		a->seg.len = MAX(4*INTERVAL_SECOND*100/l, INTERVAL_SECOND/2);
 	else
-	{
-		if (a->seg.start[LOAD_COLOR])
-			a->seg.end[LOAD_COLOR] = 0;
-		else
-			a->seg.end[LOAD_COLOR] = COLOR_MAX/2;
-		if (l > 4*INTERVAL_SECOND*100/LOAD_UPDATE)
-			a->seg.len = 4*INTERVAL_SECOND*100/l;
-	}
-	activity_add(a);
+		a->seg.len = LOAD_UPDATE;
+	activity_add(a, led);
 }
 
-static struct activity Load_blink = { { .len = LOAD_UPDATE }, .fun = &load_blink };
+static struct activity Load_blink = { 
+	{ .len = LOAD_UPDATE }, 
+	.led_start = LED_LOAD_1, 
+	.led_end = LED_LOAD_0,
+	.fun = &load_blink 
+};
 
 void loadavg_init()
 {
-	load_update(&Load_update);
-	load_blink(&Load_blink);
+	color_t c = { 0, COLOR_MAX/2, COLOR_MAX/2 };
+	base_set(c, LED_LOAD_1);
+
+	load_update(&Load_update, 0);
+	load_blink(&Load_blink, 0);
 }

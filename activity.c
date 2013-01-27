@@ -9,8 +9,20 @@
 
 typedef int lcolor_t[COLOR_COUNT];
 
-static HLIST_HEAD(struct activity) Active;
-static lcolor_t Base;
+static struct state {
+	int blink;
+	HLIST_HEAD(struct activity) active;
+	lcolor_t base;
+	struct segment current;
+} State[LED_COUNT];
+
+void active_blink(enum led led, int blink)
+{
+	assert(blink != 0);
+	State[led].blink = blink;
+	if (blink > 0)
+		blink1_set(blink, 0, 0, 0);
+}
 
 static void l_color(color_t o, const lcolor_t i)
 {
@@ -25,12 +37,11 @@ static void l_color(color_t o, const lcolor_t i)
 	}
 }
 
-static inline int interp(int s, interval_t l, int e, interval_t r)
+static inline void color_set(lcolor_t o, const color_t i)
 {
-	assert(r <= l);
-	if (!l)
-		return s;
-	return e + (s-e)*r/l;
+	unsigned c;
+	for_color (c)
+		o[c] = i[c];
 }
 
 static inline void color_add(lcolor_t o, const color_t i)
@@ -48,8 +59,16 @@ static inline void color_sub(lcolor_t o, const color_t i)
 			o[c] = 0;
 }
 
+static inline int interp(int s, interval_t l, int e, interval_t r)
+{
+	if (!l)
+		return s;
+	return e + (s-e)*r/l;
+}
+
 static void segment_interp(color_t o, const struct segment *s, interval_t r)
 {
+	assert(r <= s->len);
 	unsigned c;
 	for_color (c)
 		o[c] = interp(s->start[c], s->len, s->end[c], r);
@@ -62,30 +81,30 @@ static void segment_interp_add(lcolor_t o, const struct segment *s, interval_t r
 	color_add(o, t);
 }
 
-static struct segment Current;
-
-static void segment_run(int blink, const struct segment *s)
+static void segment_run(enum led led, const struct segment *s)
 {
-	if (color_cmp(Current.start, s->start))
+	if (color_cmp(State[led].current.start, s->start))
 	{
 		if (Debug)
-			printf("       %02X%02X%02X\n", s->start[0], s->start[1], s->start[2]);
-		blink1_set(blink, s->start[0], s->start[1], s->start[2]);
+			printf("       %02X%02X%02X [%d]\n", s->start[0], s->start[1], s->start[2], led);
+		if (State[led].blink > 0)
+			blink1_set(State[led].blink, s->start[0], s->start[1], s->start[2]);
 	}
 	if (s->len && color_cmp(s->end, s->start))
 	{
 		if (Debug)
-			printf("%5u->%02X%02X%02X\n", s->len, s->end[0], s->end[1], s->end[2]);
-		blink1_fade(blink, s->len, s->end[0], s->end[1], s->end[2]);
+			printf("%5u->%02X%02X%02X [%d]\n", s->len, s->end[0], s->end[1], s->end[2], led);
+		if (State[led].blink > 0)
+			blink1_fade(State[led].blink, s->len, s->end[0], s->end[1], s->end[2]);
 	}
-	Current = *s;
+	State[led].current = *s;
 }
 
-static interval_t activity_rem(struct activity *act)
+static interval_t activity_rem(struct activity *act, enum led led)
 {
 	interval_t t = 0;
 	struct activity *a;
-	for_hlist (a, Active)
+	for_hlist (a, State[led].active)
 	{
 		t += a->rem;
 		if (a == act)
@@ -94,12 +113,17 @@ static interval_t activity_rem(struct activity *act)
 	return INTERVAL_INF;
 }
 
-void activity_add(struct activity *a)
+void activity_add(struct activity *a, enum led led)
 {
+	assert(led < LED_COUNT);
+	if (a->led_start)
+		assert(a->led_start > led && a->led_start < LED_COUNT);
+	if (a->led_end)
+		assert(a->led_end > led && a->led_end < LED_COUNT);
 	struct activity **p;
 	assert(!a->next);
 	a->rem = a->seg.len;
-	for_hlist_p (p, Active)
+	for_hlist_p (p, State[led].active)
 	{
 		if ((*p)->rem > a->rem)
 			break;
@@ -110,87 +134,122 @@ void activity_add(struct activity *a)
 	hlist_ins(a, *p);
 }
 
-void activity_rm(struct activity *a, color_t c)
+void activity_rm(struct activity *a, enum led led/*FIXME*/, color_t c)
 {
 	if (c)
-		segment_interp(c, &a->seg, activity_rem(a));
+		segment_interp(c, &a->seg, activity_rem(a, led));
 	if (a->next)
 		a->next->rem += a->rem;
 	a->rem = 0;
 	hlist_del(a);
 }
 
-void base_add(const color_t c)
+void base_set(const color_t c, enum led led)
 {
-	color_add(Base, c);
+	color_set(State[led].base, c);
 }
 
-void base_rm(const color_t c)
+void base_add(const color_t c, enum led led)
 {
-	color_sub(Base, c);
+	color_add(State[led].base, c);
 }
 
-static void active_segment(struct segment *o)
+void base_rm(const color_t c, enum led led)
+{
+	color_sub(State[led].base, c);
+}
+
+static void active_segment(const struct state *state, struct segment *o)
 {
 	lcolor_t start, end;
-	memcpy(start, Base, sizeof(lcolor_t));
-	memcpy(end, Base, sizeof(lcolor_t));
-	struct activity *a = Active;
-	if (a)
-		o->len = a->rem;
-	interval_t t = 0;
-	while (a)
+	interval_t t;
+	struct activity *a;
+
+	if (state->active)
+		o->len = state->active->rem;
+shorten:
+	memcpy(start, state->base, sizeof(lcolor_t));
+	memcpy(end, state->base, sizeof(lcolor_t));
+	t = 0;
+	for (a = state->active; a; a = a->next)
 	{
 		t += a->rem;
+		if (a->led_start)
+			memcpy(a->seg.start, State[a->led_start].current.start, sizeof(color_t));
+		if (a->led_end)
+		{
+			struct segment *e = &State[a->led_end].current;
+			if (e->len && e->len < o->len)
+			{
+				o->len = e->len;
+				goto shorten;
+			}
+			segment_interp(a->seg.end, e, e->len-o->len);
+		}
 		segment_interp_add(start, &a->seg, t);
 		segment_interp_add(end, &a->seg, t-o->len);
-		a = a->next;
 	}
 	l_color(o->start, start);
 	l_color(o->end, end);
 }
 
-static void activity_done(struct activity *a)
+static void activity_done(struct activity *a, enum led led)
 {
 	hlist_del(a);
 	if (a->fun)
-		a->fun(a);
+		a->fun(a, led);
 }
 
-interval_t active_run(int blink)
+interval_t active_run()
 {
-	struct segment s = { .len = INTERVAL_INF };
-	active_segment(&s);
-	segment_run(blink, &s);
-	return s.len;
+	enum led led;
+	interval_t t = INTERVAL_INF;
+	for_led (led)
+	{
+		struct segment s = { .len = INTERVAL_INF };
+		active_segment(&State[led], &s);
+		segment_run(led, &s);
+		t = MIN(t, s.len);
+	}
+	return t;
 }
 
 void active_pop(interval_t t)
 {
 	if (Debug)
 		printf("%5u\n", t);
-	if (Current.len)
+	enum led led;
+	for_led (led)
 	{
-		segment_interp(Current.start, &Current, Current.len-t);
-		Current.len -= t;
+		struct segment *current = &State[led].current;
+		if (current->len)
+		{
+			segment_interp(current->start, current, current->len-t);
+			current->len -= t;
+		}
+		struct activity *a = State[led].active;
+		if (a)
+		{
+			assert(t <= a->rem);
+			a->rem -= t;
+		}
 	}
-	struct activity *a = Active;
-	if (!a)
-		return;
-	assert(t <= a->rem);
-	if ((a->rem -= t))
-		return;
-	activity_done(a);
+	for_led (led)
+	{
+		struct activity *a;
+		while ((a = State[led].active) && !a->rem)
+			activity_done(a, led);
+	}
 }
 
-void activity_then(struct activity *a)
+void activity_then(struct activity *a, enum led led)
 {
 	struct activity_then *at = (struct activity_then *)a;
-	activity_add(at->then);
+	activity_add(at->then, led);
 }
 
-void activity_then_free(struct activity *a)
+void activity_then_free(struct activity *a, enum led led)
 {
-	activity_then(a);
+	activity_then(a, led);
 	free(a);
 }

@@ -15,17 +15,20 @@ enum command {
 
 struct command_color {
 	enum command cmd;
+	enum led led;
 	color_t color;
 };
 
 struct command_color_mask {
 	enum command cmd;
+	enum led led;
 	color_t color, mask;
 };
 
 #define CMD_SEQ_MAX_SEG 16
 struct command_sequence {
 	enum command cmd;
+	enum led led;
 	struct segment seq[CMD_SEQ_MAX_SEG];
 };
 

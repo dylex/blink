@@ -246,6 +246,7 @@ static const struct argp_option Options[] =
 	, { "set", 's', "COLOR", 0, "set COLOR & mask" }
 	, { "on", 'i', "COLOR", 0, "equivalent to -m COLOR -s FFF" }
 	, { "off", 'o', "COLOR", 0, "equivalent to -m COLOR -s 000" }
+	, { "led", 'l', "ID", 0, "select LED ID [0]" }
 	, {}
 	};
 
@@ -264,6 +265,11 @@ static error_t process(int key, char *optarg, struct argp_state *state)
 
 		case ARGP_KEY_FINI:
 			close(Command_sock);
+			break;
+
+		case 'l':
+			if ((cmd.led = atoi(optarg)) >= LED_COUNT)
+				argp_error(state, "invalid LED: %s", optarg);
 			break;
 
 		case 'i':

@@ -4,6 +4,17 @@
 #include <stdint.h>
 #include <string.h>
 
+#define MIN(X, Y) ({ \
+		typeof(X) _x = (X); \
+		typeof(Y) _y = (Y); \
+		_x < _y ? _x : _y; \
+	})
+#define MAX(X, Y) ({ \
+		typeof(X) _x = (X); \
+		typeof(Y) _y = (Y); \
+		_x > _y ? _x : _y; \
+	})
+
 typedef uint16_t interval_t;
 #define INTERVAL_INF	((interval_t)-1)
 #define INTERVAL_SECOND	((interval_t)100)
@@ -35,5 +46,13 @@ struct segment {
 	color_t start, end;
 	interval_t len;
 };
+
+enum led {
+	LED_HARD = 0,
+	LED_LOAD_0,
+	LED_LOAD_1,
+	LED_COUNT
+};
+#define for_led(l) for (l = LED_COUNT-1; (int)l >= 0; l--)
 
 #endif

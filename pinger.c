@@ -10,6 +10,7 @@
 #define PINGER_HOST	"66.114.66.1"
 #define PINGER_WAIT	(60*INTERVAL_SECOND)
 #define PINGER_COLOR	RED
+#define PINGER_LED	LED_LOAD_0
 
 static int Pinger_sock = -1;
 static struct ping Ping = { .time = 5000000 };
@@ -71,16 +72,16 @@ static void pinger_res(struct watch *w, uint8_t events)
 		return;
 	}
 
-	activity_rm(&Pinger_act, Pinger_act.seg.start);
+	activity_rm(&Pinger_act, PINGER_LED, Pinger_act.seg.start);
 	uint8_t c = pinger_color(p.time);
 	Pinger_act.seg.end[PINGER_COLOR] = c;
 	Pinger_act.seg.len = PINGER_WAIT/(c/20+1);
-	activity_add(&Pinger_act);
+	activity_add(&Pinger_act, PINGER_LED);
 }
 
 static struct watch Pinger_watch = { .fd = -1, .events = WATCH(IN), .fun = &pinger_res };
 
-static void pinger_run(struct activity *a)
+static void pinger_run(struct activity *a, enum led led)
 {
 	if ((Pinger_sock < 0 && pinger_start() < 0)
 			|| pinger_send() < 0)
@@ -105,12 +106,12 @@ static void pinger_run(struct activity *a)
 
 	color_cpy(Pinger_act.seg.start, Pinger_act.seg.end);
 	Pinger_act.seg.len = PINGER_WAIT;
-	activity_add(&Pinger_act);
+	activity_add(&Pinger_act, led);
 }
 
 void pinger_init()
 {
 	Ping.host = inet_addr(PINGER_HOST);
 	Pinger_act.fun = &pinger_run;
-	activity_add(&Pinger_act);
+	activity_add(&Pinger_act, PINGER_LED);
 }

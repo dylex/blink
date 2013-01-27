@@ -11,8 +11,9 @@ module System.Hardware.Blink1.Types
 
 import Control.Applicative
 import Control.Arrow ((***))
-import Data.Word (Word8, Word16)
 import Data.Fixed (HasResolution(..), Centi)
+import Data.Monoid (Monoid(..))
+import Data.Word (Word8, Word16)
 import Numeric (showHex, readHex)
 
 data RGB a = RGB { red, green, blue :: !a }
@@ -36,11 +37,23 @@ instance Num a => Num (RGB a) where
   signum = fmap signum
   fromInteger = pure . fromInteger
 
+clipAdd :: (Num a, Ord a, Bounded a) => a -> a -> a
+clipAdd x y 
+  | z < x = maxBound
+  | otherwise = z
+  where z = x + y
+
+-- |like 'Sum' but clips overflowing values at 'maxBound'
+instance (Num a, Ord a, Bounded a) => Monoid (RGB a) where
+  mempty = 0
+  mappend = liftA2 clipAdd
+
 showHex2 :: Word8 -> ShowS
 showHex2 x
   | x < 16 = showChar '0' . showHex x
   | otherwise = showHex x
 
+-- |uses #RRGGBB format
 instance Show RGB8 where
   showsPrec _ (RGB r g b) = showChar '#' . showHex2 r . showHex2 g . showHex2 b
 instance Read RGB8 where
@@ -69,6 +82,7 @@ second = Delay sec
 instance HasResolution Delay where
   resolution _ = sec
 
+-- | operations are based on seconds
 instance Num Delay where
   Delay x + Delay y = Delay (x + y)
   Delay x - Delay y = Delay (x - y)

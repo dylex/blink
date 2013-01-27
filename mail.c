@@ -6,19 +6,17 @@
 #include "notify.h"
 
 #define MAIL_DIR	"mail/spool/new"
-#define MAIL_COLOR	{ 0, COLOR_MAX/2, 0 }
+#define MAIL_LED	LED_LOAD_1
 
-static color_t Mail_color = MAIL_COLOR;
+static color_t Mail_color[2] = { { 0, 0, COLOR_MAX/2 } , { 0, COLOR_MAX/2, 0 } };
 static unsigned Mail_count;
 
 static void mail_update()
 {
-	static bool cur;
-	if (Mail_count && !cur)
-		base_add(Mail_color);
-	else if (!Mail_count && cur)
-		base_rm(Mail_color);
-	cur = Mail_count;
+	if (Mail_count)
+		base_set(Mail_color[1], MAIL_LED);
+	else
+		base_set(Mail_color[0], MAIL_LED);
 }
 
 static inline bool mail_inc(const char *name)
