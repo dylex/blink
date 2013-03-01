@@ -28,7 +28,7 @@ reportId :: Word8
 reportId = 1
 
 msgLen :: Int
-msgLen = 8
+msgLen = 7
 
 fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral

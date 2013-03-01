@@ -85,7 +85,7 @@ static int blink1_write(int d, const void *buf, size_t len)
 }
 
 #define blink1_cmd(D, CMD, ARGS...) ({ \
-		uint8_t _cmd[9] = { 1, CMD, ##ARGS }; \
+		uint8_t _cmd[8] = { 1, CMD, ##ARGS }; \
 		blink1_write(D, _cmd, sizeof(_cmd)); \
 	})
 
