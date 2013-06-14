@@ -97,7 +97,8 @@ int main(int argc, char **argv)
 	loadavg_init();
 	if (mail_init() < 0)
 		fprintf(stderr, "mail_init: %m\n");
-	pinger_init();
+	if (pinger_init() < 0)
+		fprintf(stderr, "pinger_init: %m\n");
 	if (!No_blink1 && command_init() < 0)
 		fprintf(stderr, "command_init: %m\n");
 

@@ -1,6 +1,7 @@
 #ifndef ACTIVITY_H
 #define ACTIVITY_H
 
+#include <stdbool.h>
 #include "types.h"
 #include "list.h"
 
@@ -20,6 +21,7 @@ struct activity {
 
 void activity_add(struct activity *, enum led);
 void activity_rm(struct activity *, enum led, color_t);
+bool activity_active(struct activity *);
 
 struct activity_then {
 	struct activity act;

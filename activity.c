@@ -144,6 +144,11 @@ void activity_rm(struct activity *a, enum led led/*FIXME*/, color_t c)
 	hlist_del(a);
 }
 
+bool activity_active(struct activity *a)
+{
+	return hlist_on_list(a);
+}
+
 void base_set(const color_t c, enum led led)
 {
 	color_set(State[led].base, c);

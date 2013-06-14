@@ -26,4 +26,6 @@
 		(X)->prev = NULL; \
 	})
 
+#define hlist_on_list(X) ((X)->prev != NULL)
+
 #endif
