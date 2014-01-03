@@ -3,7 +3,7 @@ CFLAGS=-O -Wall -g -D_GNU_SOURCE=1
 LDFLAGS=-g -lm
 BINDIR=/usr/bin
 
-FILES=blinkd mail loadavg pinger command activity notify watch blink1
+FILES=blinkd mail loadavg pinger purple command activity notify watch blink1
 PROGS=blinkd blink
 
 default: $(PROGS)

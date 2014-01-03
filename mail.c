@@ -8,15 +8,12 @@
 #define MAIL_DIR	"mail/spool/new"
 #define MAIL_LED	LED_LOAD_1
 
-static color_t Mail_color[2] = { { 0, 0, COLOR_MAX/2 } , { 0, COLOR_MAX/2, 0 } };
+static const color_t Mail_color[2] = { { 0, 0, COLOR_MAX/2 } , { 0, COLOR_MAX/2, 0 } };
 static unsigned Mail_count;
 
 static void mail_update()
 {
-	if (Mail_count)
-		base_set(Mail_color[1], MAIL_LED);
-	else
-		base_set(Mail_color[0], MAIL_LED);
+	base_set(Mail_color[!!Mail_count], MAIL_LED);
 }
 
 static inline bool mail_inc(const char *name)

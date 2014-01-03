@@ -14,6 +14,7 @@
 #include "loadavg.h"
 #include "mail.h"
 #include "pinger.h"
+#include "purple.h"
 #include "command.h"
 
 bool Debug;
@@ -99,6 +100,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "mail_init: %m\n");
 	if (pinger_init() < 0)
 		fprintf(stderr, "pinger_init: %m\n");
+	purple_init();
 	if (!No_blink1 && command_init() < 0)
 		fprintf(stderr, "command_init: %m\n");
 
