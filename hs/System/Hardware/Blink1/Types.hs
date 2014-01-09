@@ -7,6 +7,7 @@ module System.Hardware.Blink1.Types
   , PatternStep(..)
   , EEPROMAddr(..)
   , serialNumLen
+  , LED(..)
   ) where
 
 import Control.Applicative
@@ -120,12 +121,12 @@ instance Read Delay where
       ), s)
 
 
--- | positions are counted 0-11
-newtype PatternStep = PatternStep Word8 deriving (Eq, Ord, Enum, Num, Show, Read)
+-- | positions are counted 0-11 on mk1, 0-31 on mk2
+newtype PatternStep = PatternStep { patternStep :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read)
 
 instance Bounded PatternStep where
   minBound = PatternStep 0
-  maxBound = PatternStep 11
+  maxBound = PatternStep 31 -- 11 on mk1
 
 data EEPROMAddr
   = EEOSCCAL
@@ -154,3 +155,10 @@ instance Enum EEPROMAddr where
 instance Bounded EEPROMAddr where
   minBound = EEOSCCAL
   maxBound = EEPatternStart
+
+-- | LEDs are 1-based (0 means "all")
+newtype LED = LED { whichLED :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read)
+
+instance Bounded LED where
+  minBound = LED 1
+  maxBound = LED maxBound
