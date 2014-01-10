@@ -31,6 +31,8 @@ static void purple_next(struct activity *act, enum led led)
 
 void purple_update(signed count)
 {
+	if (Purple_count == count)
+		return;
 	Purple_count = count;
 	if (count == -1) {
 		if (activity_active(&Purple_act))

@@ -59,9 +59,11 @@ static void client_in(struct watch *w, uint8_t events)
 
 	static bool last_mail = 0;
 	bool mail = !!(c & REMOTE_MASK_MAIL);
-	Mail_count += mail - last_mail;
-	last_mail = mail;
-	mail_update();
+	if (mail != last_mail) {
+		Mail_count += mail - last_mail;
+		last_mail = mail;
+		mail_update();
+	}
 }
 
 static struct watch Client = { .fd = -1, .fun = &client_in };
