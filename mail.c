@@ -4,16 +4,19 @@
 #include <dirent.h>
 #include "activity.h"
 #include "notify.h"
+#include "remote.h"
+#include "mail.h"
 
 #define MAIL_DIR	"mail/spool/new"
 #define MAIL_LED	LED_LOAD_1
 
 static const color_t Mail_color[2] = { { 0, 0, COLOR_MAX/2 } , { 0, COLOR_MAX/2, 0 } };
-static unsigned Mail_count;
+signed Mail_count = 0;
 
-static void mail_update()
+void mail_update()
 {
 	base_set(Mail_color[!!Mail_count], MAIL_LED);
+	remote_update();
 }
 
 static inline bool mail_inc(const char *name)

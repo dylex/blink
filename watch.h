@@ -1,6 +1,7 @@
 #ifndef WATCH_H
 #define WATCH_H
 
+#include <stdbool.h>
 #include "types.h"
 #include "list.h"
 
@@ -25,6 +26,7 @@ struct watch {
 
 void watch_add(struct watch *);
 void watch_rm(struct watch *);
+bool watch_active(const struct watch *);
 int watch_run(interval_t d);
 
 #endif

@@ -21,7 +21,7 @@ struct activity {
 
 void activity_add(struct activity *, enum led);
 void activity_rm(struct activity *, enum led, color_t);
-bool activity_active(struct activity *);
+bool activity_active(const struct activity *);
 
 struct activity_then {
 	struct activity act;

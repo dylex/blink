@@ -1,6 +1,8 @@
 #ifndef PURPLE_H
 #define PURPLE_H
 
-void purple_init(void);
+extern signed Purple_count;
+
+void purple_update(signed count);
 
 #endif

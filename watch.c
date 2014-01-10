@@ -44,6 +44,11 @@ void watch_rm(struct watch *w)
 	watch_refresh();
 }
 
+bool watch_active(const struct watch *w)
+{
+	return hlist_on_list(w);
+}
+
 int watch_run(interval_t t)
 {
 	enum watch_event e;
