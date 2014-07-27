@@ -9,12 +9,20 @@
 
 typedef int lcolor_t[COLOR_COUNT];
 
+static struct led {
+	HLIST_NEXT(struct led);
+	HLIST_HEAD(struct activity) active;
+	lcolor_t base;
+	void update(const struct led *this, const struct segment *);
+	struct segment current;
+};
+
 static struct state {
 	int blink;
 	HLIST_HEAD(struct activity) active;
 	lcolor_t base;
 	struct segment current;
-} State[LED_COUNT];
+} State[LED_MAX];
 
 void active_blink(enum led led, int blink)
 {
@@ -83,10 +91,14 @@ static void segment_interp_add(lcolor_t o, const struct segment *s, interval_t r
 
 static void segment_run(enum led led, const struct segment *s)
 {
+	if (!led)
+		return;
 	if (color_cmp(State[led].current.start, s->start))
 	{
-		if (Debug)
+		if (Debug) {
+			printf("was    %02X%02X%02X [%d]\n", State[led].current.start[0], State[led].current.start[1], State[led].current.start[2], led);
 			printf("       %02X%02X%02X [%d]\n", s->start[0], s->start[1], s->start[2], led);
+		}
 		if (State[led].blink > 0)
 			blink1_set(State[led].blink, s->start[0], s->start[1], s->start[2]);
 	}
@@ -98,6 +110,10 @@ static void segment_run(enum led led, const struct segment *s)
 			blink1_fade(State[led].blink, s->len, s->end[0], s->end[1], s->end[2]);
 	}
 	State[led].current = *s;
+}
+
+static bool activity_empty(const struct activity *a) {
+	return !a->led || !color_cmp(a->seg.start, color_zero) && !color_cmp(a->seg.end, color_zero) && !a->led_start && !a->led_end;
 }
 
 static interval_t activity_rem(struct activity *act, enum led led)
@@ -113,13 +129,18 @@ static interval_t activity_rem(struct activity *act, enum led led)
 	return INTERVAL_INF;
 }
 
-void activity_add(struct activity *a, enum led led)
+static enum led activity_led(struct activity *a) {
+	assert(a->led < LED_MAX);
+	return activity_empty(a) ? LED_NONE : a->led;
+}
+
+void activity_add(struct activity *a)
 {
-	assert(led < LED_COUNT);
+	enum led led = activity_led(a);
 	if (a->led_start)
-		assert(a->led_start > led && a->led_start < LED_COUNT);
+		assert(a->led_start > led && a->led_start < LED_MAX);
 	if (a->led_end)
-		assert(a->led_end > led && a->led_end < LED_COUNT);
+		assert(a->led_end > led && a->led_end < LED_MAX);
 	struct activity **p;
 	assert(!a->next);
 	a->rem = a->seg.len;
@@ -134,8 +155,9 @@ void activity_add(struct activity *a, enum led led)
 	hlist_ins(a, *p);
 }
 
-void activity_rm(struct activity *a, enum led led/*FIXME*/, color_t c)
+void activity_rm(struct activity *a, color_t c)
 {
+	enum led led = activity_led(a);
 	if (c)
 		segment_interp(c, &a->seg, activity_rem(a, led));
 	if (a->next)
@@ -170,8 +192,7 @@ static void active_segment(const struct state *state, struct segment *o)
 	interval_t t;
 	struct activity *a;
 
-	if (state->active)
-		o->len = state->active->rem;
+	o->len = state->active ? state->active->rem : INTERVAL_INF;
 shorten:
 	memcpy(start, state->base, sizeof(lcolor_t));
 	memcpy(end, state->base, sizeof(lcolor_t));
@@ -198,11 +219,11 @@ shorten:
 	l_color(o->end, end);
 }
 
-static void activity_done(struct activity *a, enum led led)
+static void activity_done(struct activity *a)
 {
 	hlist_del(a);
 	if (a->fun)
-		a->fun(a, led);
+		a->fun(a);
 }
 
 interval_t active_run()
@@ -211,10 +232,11 @@ interval_t active_run()
 	interval_t t = INTERVAL_INF;
 	for_led (led)
 	{
-		struct segment s = { .len = INTERVAL_INF };
+		struct segment s;
 		active_segment(&State[led], &s);
 		segment_run(led, &s);
-		t = MIN(t, s.len);
+		if (State[led].active)
+			t = MIN(t, State[led].active->rem);
 	}
 	return t;
 }
@@ -243,18 +265,18 @@ void active_pop(interval_t t)
 	{
 		struct activity *a;
 		while ((a = State[led].active) && !a->rem)
-			activity_done(a, led);
+			activity_done(a);
 	}
 }
 
-void activity_then(struct activity *a, enum led led)
+void activity_then(struct activity *a)
 {
 	struct activity_then *at = (struct activity_then *)a;
-	activity_add(at->then, led);
+	activity_add(at->then);
 }
 
-void activity_then_free(struct activity *a, enum led led)
+void activity_then_free(struct activity *a)
 {
-	activity_then(a, led);
+	activity_then(a);
 	free(a);
 }

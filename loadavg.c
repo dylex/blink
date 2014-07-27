@@ -31,7 +31,7 @@ static loadavg_t load_read(char **s)
 	return x;
 }
 
-static void load_update(struct activity *a, enum led led)
+static void load_update(struct activity *a)
 {
 	FILE *f = fopen(LOAD_FILE, "r");
 	if (f)
@@ -45,7 +45,7 @@ static void load_update(struct activity *a, enum led led)
 		for (i = 0; *p && i < sizeof(Loadavg)/sizeof(*Loadavg); i++)
 			Loadavg[i] = load_read(&p);
 	}
-	activity_add(a, led);
+	activity_add(a);
 }
 
 static struct activity Load_update = { 
@@ -53,7 +53,7 @@ static struct activity Load_update = {
 	.fun = &load_update 
 };
 
-static void load_blink(struct activity *a, enum led led)
+static void load_blink(struct activity *a)
 {
 	loadavg_t l = Loadavg[LOAD_WHICH];
 	enum led led_start = a->led_start;
@@ -63,11 +63,12 @@ static void load_blink(struct activity *a, enum led led)
 		a->seg.len = MAX(4*INTERVAL_SECOND*100/l, INTERVAL_SECOND/2);
 	else
 		a->seg.len = LOAD_UPDATE;
-	activity_add(a, led);
+	activity_add(a);
 }
 
 static struct activity Load_blink = { 
 	{ .len = LOAD_UPDATE }, 
+	.led = LED_1,
 	.led_start = LED_LOAD_1, 
 	.led_end = LED_LOAD_0,
 	.fun = &load_blink 
@@ -78,6 +79,6 @@ void loadavg_init()
 	color_t c = { 0, COLOR_MAX/2, COLOR_MAX/2 };
 	base_set(c, LED_LOAD_1);
 
-	load_update(&Load_update, 0);
-	load_blink(&Load_blink, 0);
+	load_update(&Load_update);
+	load_blink(&Load_blink);
 }

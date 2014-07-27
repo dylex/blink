@@ -11,7 +11,6 @@
 
 #define PINGDEV	"/dev/ping"
 #define PINGER_COLOR	RED
-#define PINGER_LED	0
 
 static uint8_t pinger_color(float time)
 {
@@ -25,7 +24,7 @@ static uint8_t pinger_color(float time)
 		return 0;
 }
 
-static struct activity Pinger_inc = { { .end = { [PINGER_COLOR] = 255 } } };
+static struct activity Pinger_inc = { { .end = { [PINGER_COLOR] = 255 } }, .led = LED_1 };
 static struct activity_then Pinger_act = { { .fun = activity_then }, &Pinger_inc };
 
 static void pinger_res(struct watch *w, uint8_t events);
@@ -46,13 +45,13 @@ static void pinger_res(struct watch *w, uint8_t events)
 	}
 
 	if (activity_active(&Pinger_act.act))
-		activity_rm(&Pinger_act.act, PINGER_LED, Pinger_act.act.seg.start);
+		activity_rm(&Pinger_act.act, Pinger_act.act.seg.start);
 	else if (activity_active(&Pinger_inc))
-		activity_rm(&Pinger_inc, PINGER_LED, Pinger_act.act.seg.start);
+		activity_rm(&Pinger_inc, Pinger_act.act.seg.start);
 	else
 		color_cpy(Pinger_act.act.seg.start, color_zero);
 	Pinger_inc.seg.start[PINGER_COLOR] = Pinger_act.act.seg.end[PINGER_COLOR] = pinger_color(p);
-	activity_add(&Pinger_act.act, PINGER_LED);
+	activity_add(&Pinger_act.act);
 }
 
 int pinger_init()

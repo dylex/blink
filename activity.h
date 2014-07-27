@@ -8,10 +8,11 @@
 void active_blink(enum led, int blink);
 
 struct activity;
-typedef void activity_fn(struct activity *, enum led);
+typedef void activity_fn(struct activity *);
 struct activity {
 	struct segment seg;
 	activity_fn *fun;
+	enum led led : 4;
 	enum led led_start : 4;
 	enum led led_end : 4;
 
@@ -19,8 +20,8 @@ struct activity {
 	HLIST_NEXT(struct activity);
 };
 
-void activity_add(struct activity *, enum led);
-void activity_rm(struct activity *, enum led, color_t);
+void activity_add(struct activity *);
+void activity_rm(struct activity *, color_t);
 bool activity_active(const struct activity *);
 
 struct activity_then {

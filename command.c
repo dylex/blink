@@ -33,13 +33,15 @@ static void command_sequence(struct segment *seq, unsigned n, enum led led)
 	}
 	a[0].act.seg = seq[n-1];
 	a[0].act.fun = activity_free;
+	a[0].act.led = led;
 	for (i = 1; i < n; i ++)
 	{
 		a[i].act.seg = seq[n-i-1];
 		a[i].act.fun = &activity_then;
 		a[i].then = &a[i-1].act;
+		a[i].act.led = led;
 	}
-	activity_add(&a[n-1].act, led);
+	activity_add(&a[n-1].act);
 }
 
 static void command_run(struct watch *w, uint8_t events)
@@ -67,7 +69,7 @@ static void command_run(struct watch *w, uint8_t events)
 	CHECK_LEN(cmd);
 	enum color c;
 	color_t ct = {};
-	enum led led;
+	enum led led = 0;
 	if (z >= sizeof(cmdbuf.cmd_color))
 	{
 		color_cpy(ct, cmdbuf.cmd_color.color);
