@@ -76,7 +76,7 @@ rgb (RGB r g b) = [r,g,b]
 
 delay :: Delay -> [Word8]
 delay d = [i $ t `shiftR` 8, i t] where 
-  t = truncate (100 * d) :: Word16
+  t = delayCentiseconds d
   i = fi :: Word16 -> Word8
 
 bool :: Bool -> Word8

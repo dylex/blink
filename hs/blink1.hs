@@ -44,6 +44,7 @@ withDev_ d f = withDev d f
 data State = State 
   { dev :: !Dev
   , led :: Maybe LED
+  , time :: Delay
   }
 
 opening :: IO Dev -> State -> IO State
@@ -84,17 +85,25 @@ options =
       "get the serial number (only works on mk1)"
   , Opt.Option "l" ["led"]
       (Opt.OptArg (\l s -> return s{ led = fmap (toEnum . read) l }) "INDEX")
-      "apply the next commands only to LED INDEX [all]"
+      "apply the next actions only to LED INDEX [all]"
   , Opt.Option "g" ["get"]
       (Opt.OptArg (\l s -> do
-        withDev (dev s) (\b -> getColor2 b (fromMaybe 0 (fmap (toEnum . read) l <|> led s))) >>= print
+        withDev (dev s) getColor2 (fromMaybe 0 (fmap (toEnum . read) l <|> led s)) >>= print
         return s) "LED")
       "get the current color of the LED"
   , Opt.Option "s" ["set"]
       (Opt.ReqArg (\c s -> do
-        withDev (dev s) (\b -> setColor2 b (led s) (read c))
+        withDev (dev s) setColor2 (led s) (read c)
         return s) "RGB")
-      "set the color"
+      "set the color immediately"
+  , Opt.Option "t" ["time"]
+      (Opt.ReqArg (\t s -> return s{ time = read t }) "DELAY")
+      "set the delay/fade time for the next actions"
+  , Opt.Option "f" ["fade"]
+      (Opt.ReqArg (\c s -> do
+        withDev (dev s) fadeToColor2 (led s) (time s) (read c)
+        return s) "RGB")
+      "fade to color over DELAY"
   ]
 
 usage :: String
@@ -109,4 +118,4 @@ main = do
       mapM_ putStrLn err
       putStrLn usage
       exitFailure
-  foldM (flip ($)) (State NoDev Nothing) r >>= close
+  foldM (flip ($)) (State NoDev Nothing 0) r >>= close
