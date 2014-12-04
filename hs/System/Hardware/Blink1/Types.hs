@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module System.Hardware.Blink1.Types
   ( RGB(..), RGB8
   , black

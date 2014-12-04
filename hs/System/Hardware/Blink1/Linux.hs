@@ -1,14 +1,20 @@
+{-|
+
+  Blink(1) hardware interface using Linux's /dev/hidraw* devices.
+
+-}
+
 module System.Hardware.Blink1.Linux
   ( Blink1Raw
   , openRawDev
   , openRawHID
   , openRawHIDs
-  , closeRaw
   ) where
 
 import Control.Exception (onException, bracket)
 import Control.Monad
 import Data.List (isPrefixOf, genericLength)
+import Data.Word (Word8)
 import Foreign.C.Error (errnoToIOError, eFTYPE) -- hack
 import Numeric (readHex)
 import System.IO.Error (mkIOError, fullErrorType, doesNotExistErrorType)
@@ -37,9 +43,9 @@ findRawDev :: MonadPlus m => IO (m String)
 findRawDev = pds dp hiddir where
   hiddir = "/sys/bus/hid/devices"
   pds f d = bracket (openDirStream d) closeDirStream r where
-    r d = do
-      e <- readDirStream d
-      if null e then return mzero else liftM2 mplus (f e) (r d)
+    r ds = do
+      e <- readDirStream ds
+      if null e then return mzero else liftM2 mplus (f e) (r ds)
   dp f | null (do
       (_,':':vs) <- rh f
       (v,':':ps) <- rh vs

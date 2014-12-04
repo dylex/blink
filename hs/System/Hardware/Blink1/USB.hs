@@ -1,12 +1,18 @@
+{-|
+
+  Blink(1) hardware interface using libusb.
+
+-}
+
 module System.Hardware.Blink1.USB
   ( Blink1USB
   , openUSB
   , openUSBs
-  , closeUSB
   , getSerialNumber
   ) where
 
 import Control.Monad
+import Data.Word (Word8)
 import System.IO.Error (mkIOError, doesNotExistErrorType)
 import System.USB
 import qualified Data.Vector as V
@@ -28,11 +34,11 @@ interface = 0
 
 openDev :: Device -> IO Blink1USB
 openDev d = do
-  d <- openDevice d
-  kda <- kernelDriverActive d interface
-  when kda $ detachKernelDriver d interface
-  claimInterface d interface
-  return $ Blink1USB d
+  dev <- openDevice d
+  kda <- kernelDriverActive dev interface
+  when kda $ detachKernelDriver dev interface
+  claimInterface dev interface
+  return $ Blink1USB dev
 
 openUSB :: IO Blink1USB
 openUSB = do

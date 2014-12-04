@@ -1,12 +1,23 @@
+{-|
+
+  To use any of these functions, you first must open a blink(1) device (providing the 'System.Hardware.Blink1.Class.Blink' interface).
+  Currently "System.Hardware.Blink1.Linux" and "System.Hardware.Blink1.USB" are provided.
+
+  The functions ending with 2 provide functionality available on the blink(1) mk2, so are only likely to work if 'getVersion' returns @('2',_)@
+
+-}
+
 module System.Hardware.Blink1
   ( RGB(..), RGB8
   , Delay(..)
   , PatternStep
   , LED
 
+  , closeBlink1
   , getVersion
   , getColor2
   , setColor
+  , setColor2
   , fadeToColor
   , fadeToColor2
   , setServerDown
@@ -20,7 +31,6 @@ module System.Hardware.Blink1
   , getSerialNum
   , setSerialNum
   , testBlink1
-  , isMk2
   ) where
 
 import Control.Concurrent (threadDelay)
@@ -58,8 +68,8 @@ request b c d = do
 
 getVersion :: Blink1 b => b -> IO (Char,Char)
 getVersion b = do
-  _:_:maj:min:_ <- request b 'v' []
-  return (chr (fi maj), chr (fi min))
+  _:_:mj:mn:_ <- request b 'v' []
+  return (chr (fi mj), chr (fi mn))
 
 rgb :: RGB8 -> [Word8]
 rgb (RGB r g b) = [r,g,b]
@@ -79,26 +89,28 @@ led :: Maybe LED -> Word8
 led = maybe 0 whichLED
 
 -- | query the current color.
-getColor2 :: Blink1 b => b -> LED -> IO (RGB8, Delay)
-getColor2 b n = do
-  _:r:g:b:d1:d2:_ <- request b 'r' $ rgb black ++ delay 0 ++ [led (Just n)]
-  return (RGB r g b, fi (i d1 `shiftL` 8 .|. i d2) / 100)
-  where i = fi :: Word8 -> Word16
+getColor2 :: Blink1 b => b -> LED -> IO RGB8
+getColor2 dev n = do
+  _:r:g:b:_ <- request dev 'r' [0,0,0,0,0,led (Just n)]
+  return $ RGB r g b
 
 -- | set the given color now
 setColor :: Blink1 b => b -> RGB8 -> IO ()
-setColor b c = command b 'n' $ rgb c
+setColor b = setColor2 b Nothing
+
+-- | Although documented, this does not appear to work correctly.
+setColor2 :: Blink1 b => b -> Maybe LED -> RGB8 -> IO ()
+setColor2 b n c = command b 'n' $ rgb c ++ [0,0,led n]
 
 fadeToColor :: Blink1 b => b -> Delay -> RGB8 -> IO ()
-fadeToColor b d c = command b 'c' $ rgb c ++ delay d
+fadeToColor b = fadeToColor2 b Nothing
 
--- | Mk2 adds an LED number. safe to use with mk1 when n = Nothing.
 fadeToColor2 :: Blink1 b => b -> Maybe LED -> Delay -> RGB8 -> IO ()
 fadeToColor2 b n d c = command b 'c' $ rgb c ++ delay d ++ [led n]
 
 -- | enable/disable serverdown mode with the given timeout
 setServerDown :: Blink1 b => b -> Bool -> Delay -> IO ()
-setServerDown b o d = command b 'D' $ bool o : delay d
+setServerDown b o d = setServerDown2 b o d False (PatternStep 0, PatternStep 0)
 
 -- | enable/disable serverdown mode with the given timeout, optionally staying on afterwards, over the given pattern range
 setServerDown2 :: Blink1 b => b -> Bool -> Delay -> Bool -> (PatternStep, PatternStep) -> IO ()
@@ -124,13 +136,13 @@ setPattern :: Blink1 b => b -> PatternStep -> Delay -> RGB8 -> IO ()
 setPattern b p d c = command b 'P' $ rgb c ++ delay d ++ [pos p]
 
 getPattern :: Blink1 b => b -> PatternStep -> IO (Delay, RGB8)
-getPattern b p = do
-  _:r:g:b:d1:d2:_ <- request b 'R' $ rgb black ++ delay 0 ++ [pos p]
+getPattern dev p = do
+  _:r:g:b:d1:d2:_ <- request dev 'R' $ rgb black ++ delay 0 ++ [pos p]
   return (fi (i d1 `shiftL` 8 .|. i d2) / 100, RGB r g b)
   where i = fi :: Word8 -> Word16
 
 savePatterns2 :: Blink1 b => b -> IO ()
-savePatterns2 b = command b 'W' []
+savePatterns2 b = command b 'W' [0xBE,0xEF,0xCA,0xFE]
 
 eeaddr :: EEPROMAddr -> Word8
 eeaddr = fi . fromEnum
@@ -143,11 +155,13 @@ readEEPROM b a = do
 writeEEPROM :: Blink1 b => b -> EEPROMAddr -> Word8 -> IO ()
 writeEEPROM b a v = command b 'E' [eeaddr a, v]
 
+-- | This is only supported on mk1 devices.
 getSerialNum :: Blink1 b => b -> IO Word32
 getSerialNum b =
   foldl' (\l -> (l `shiftL` 8 .|.) . fi) 0 `liftM` 
     mapM (readEEPROM b . EESerialNum) [0..pred serialNumLen]
 
+-- | This is only supported on mk1 devices.
 setSerialNum :: Blink1 b => b -> Word32 -> IO ()
 setSerialNum b s = mapM_ w [0..pred serialNumLen] where
   w i = writeEEPROM b (EESerialNum i) $ fi $ s `shiftR` (8*(3-fi i))
@@ -158,6 +172,3 @@ testBlink1 b = do
   return $ case r of
     0x55:0xAA:u:_ -> Right (u /= 0)
     _ -> Left r
-
-isMk2 :: Blink1 b => b -> IO Bool
-isMk2 b = (>= 0x2000000) `liftM` getSerialNum b
