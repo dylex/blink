@@ -33,6 +33,13 @@ static inline void client_ready(struct watch *w)
 
 static void client_retry(void);
 
+static inline void connect_error()
+{
+	if (errno != ECONNREFUSED)
+		fprintf(stderr, "remote connect: %m\n");
+	return client_retry();
+}
+
 static void client_in(struct watch *w, uint8_t events)
 {
 	if (w->events == WATCH(OUT))
@@ -40,10 +47,8 @@ static void client_in(struct watch *w, uint8_t events)
 		watch_rm(w);
 
 		socklen_t len = sizeof(errno);
-		if (getsockopt(w->fd, SOL_SOCKET, SO_ERROR, &errno, &len) < 0 || errno) {
-			fprintf(stderr, "remote connect: %m\n");
-			return client_retry();
-		}
+		if (getsockopt(w->fd, SOL_SOCKET, SO_ERROR, &errno, &len) < 0 || errno)
+			return connect_error();
 
 		return client_ready(w);
 	}
@@ -82,8 +87,7 @@ static void client_connect(struct activity *act)
 			watch_add(&Client);
 			return;
 		}
-		fprintf(stderr, "remote connect: %m\n");
-		return client_retry();
+		return connect_error();
 	}
 
 	return client_ready(&Client);
