@@ -1,0 +1,2 @@
+#!/bin/sh
+remind -z30 -a -inocolor=1 -iblink=1 -k'x=%s;m=${x%% minutes from now|blink!*};[ "$x" = "$m" ] || blink "${m}m" 7F0' ~/.reminders &
