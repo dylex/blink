@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module System.Hardware.Blink1.Types
   ( RGB(..), RGB8
@@ -41,7 +41,10 @@ instance Num a => Num (RGB a) where
 
 clipAdd :: (Num a, Ord a, Bounded a) => a -> a -> a
 clipAdd x y 
-  | z < x = maxBound
+  | y > 0 && z < x = maxBound
+  | y < 0 && z > x = minBound
+  | z > maxBound = maxBound
+  | z < minBound = minBound
   | otherwise = z
   where z = x + y
 
@@ -60,15 +63,15 @@ instance Show RGB8 where
   showsPrec _ (RGB r g b) = showChar '#' . showHex2 r . showHex2 g . showHex2 b
 instance Read RGB8 where
   readsPrec _ ('#':c) = rc2 c ++ rc1 c where
-    rc1 (r:g:b:s) = rc (0x11*) [r] [g] [b] s
+    rc1 (r:g:b:s) = rc [r,r] [g,g] [b,b] s
     rc1 _ = []
-    rc2 (r1:r2:g1:g2:b1:b2:s) = rc id [r1,r2] [g1,g2] [b1,b2] s
+    rc2 (r1:r2:g1:g2:b1:b2:s) = rc [r1,r2] [g1,g2] [b1,b2] s
     rc2 _ = []
-    rc f r g b s = do
+    rc r g b s = do
       (r,"") <- readHex r
       (g,"") <- readHex g
       (b,"") <- readHex b
-      return (RGB (f r) (f g) (f b), s)
+      return (RGB r g b, s)
   readsPrec _ _ = []
 
 -- | time is measured in centiseconds
@@ -113,13 +116,7 @@ instance Read Delay where
     f (x,'s':s) = (realToFrac x, s)
     f (x,'c':'s':s) = (Delay (floor x), s)
     f (x,'m':'s':s) = (Delay (floor x `div` 10), s)
-    f (x,s) = (realToFrac (x ::
-#if MIN_VERSION_base(4,4,0)
-        Centi
-#else
-        Float
-#endif
-      ), s)
+    f (x,s) = (realToFrac (x :: Centi), s)
 
 
 -- | positions are counted 0-11 on mk1, 0-31 on mk2
