@@ -18,11 +18,7 @@ import Data.Monoid (Monoid(..))
 import Data.Word (Word8, Word16)
 import Numeric (showHex, readHex)
 
-data RGB a = RGB { red, green, blue :: !a }
-type RGB8 = RGB Word8
-
-black :: RGB8
-black = RGB 0 0 0
+data RGB a = RGB { red, green, blue :: !a } deriving (Eq, Bounded)
 
 instance Functor RGB where
   fmap f (RGB r g b) = RGB (f r) (f g) (f b)
@@ -39,6 +35,9 @@ instance Num a => Num (RGB a) where
   signum = fmap signum
   fromInteger = pure . fromInteger
 
+black :: Num a => RGB a
+black = 0
+
 clipAdd :: (Num a, Ord a, Bounded a) => a -> a -> a
 clipAdd x y 
   | y > 0 && z < x = maxBound
@@ -52,6 +51,8 @@ clipAdd x y
 instance (Num a, Ord a, Bounded a) => Monoid (RGB a) where
   mempty = 0
   mappend = liftA2 clipAdd
+
+type RGB8 = RGB Word8
 
 showHex2 :: Word8 -> ShowS
 showHex2 x
@@ -129,7 +130,7 @@ instance Bounded PatternStep where
 data EEPROMAddr
   = EEOSCCAL
   | EEBootMode
-  | EESerialNum Word8
+  | EESerialNum !Word8
   | EEPatternStart
   deriving (Eq, Ord)
 

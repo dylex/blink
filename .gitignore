@@ -1,4 +1,5 @@
 .depend
 *.[os]
+*.hi
 /blinkd
 /blink
