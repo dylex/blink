@@ -89,7 +89,7 @@ options =
   ]
 
 usage :: String
-usage = Opt.usageInfo "Usage: blink1 [OPTIONS]" options
+usage = Opt.usageInfo "Usage: blink1 [OPTION...]" options
 
 main :: IO State
 main = do

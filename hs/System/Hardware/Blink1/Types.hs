@@ -1,10 +1,10 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances, DeriveDataTypeable #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module System.Hardware.Blink1.Types
   ( RGB(..), RGB8
   , black
   , Delay(..)
-  , second
+  , delayCentiseconds
   , PatternStep(..)
   , EEPROMAddr(..)
   , serialNumLen
@@ -12,13 +12,14 @@ module System.Hardware.Blink1.Types
   ) where
 
 import Control.Applicative
-import Control.Arrow ((***))
-import Data.Fixed (HasResolution(..), Centi)
+import Data.Fixed (E2, Centi)
+import Data.Fixed.Prec
 import Data.Monoid (Monoid(..))
+import Data.Typeable (Typeable)
 import Data.Word (Word8, Word16)
 import Numeric (showHex, readHex)
 
-data RGB a = RGB { red, green, blue :: !a } deriving (Eq, Bounded)
+data RGB a = RGB { red, green, blue :: !a } deriving (Eq, Bounded, Typeable)
 
 instance Functor RGB where
   fmap f (RGB r g b) = RGB (f r) (f g) (f b)
@@ -76,52 +77,23 @@ instance Read RGB8 where
   readsPrec _ _ = []
 
 -- | time is measured in centiseconds
-newtype Delay = Delay { delayCentiseconds :: Word16 } deriving (Bounded, Eq, Ord, Enum)
+newtype Delay = Delay (FixedPrec Word16 E2) deriving (Bounded, Eq, Ord, Enum, Num, Real, Fractional, RealFrac)
 
-sec :: Num a => a
-sec = 100
-
-second :: Delay
-second = Delay sec
-
--- This boiler-plate fixed-point is all possibly over-kill, but is hopefully at least unambiguous, and better than using Centi
-instance HasResolution Delay where
-  resolution _ = sec
-
--- | operations are based on seconds
-instance Num Delay where
-  Delay x + Delay y = Delay (x + y)
-  Delay x - Delay y = Delay (x - y)
-  Delay x * Delay y = Delay (x * y `div` sec) -- XXX: overflow
-  negate (Delay x) = Delay (negate x)
-  abs (Delay x) = Delay (abs x)
-  signum (Delay x) = Delay (signum x * sec)
-  fromInteger i = Delay (fromInteger i * sec)
-instance Real Delay where
-  toRational (Delay x) = toRational x / sec
-instance Fractional Delay where
-  Delay x / Delay y = Delay (x * sec `div` y) -- XXX: overflow
-  recip (Delay x) = Delay (sec * sec `div` x)
-  fromRational r = Delay (floor (r * sec))
-instance RealFrac Delay where
-  properFraction (Delay x) = fromIntegral *** Delay $ x `divMod` sec
-  truncate (Delay x) = fromIntegral (x `div` sec)
-  round (Delay x) = truncate (Delay (x + (pred sec `div` 2)))
-  ceiling (Delay x) = truncate (Delay (x + pred sec))
-  floor x = truncate x -- unsigned!
+delayCentiseconds :: Delay -> Word16
+delayCentiseconds (Delay (MkFixedPrec i)) = i
 
 instance Show Delay where
-  showsPrec p d = showsPrec p (realToFrac d :: Centi) . showChar 's'
+  showsPrec p d = showsPrec p d . showChar 's'
 instance Read Delay where
   readsPrec p = map f . readsPrec p where
     f (x,'s':s) = (realToFrac x, s)
-    f (x,'c':'s':s) = (Delay (floor x), s)
-    f (x,'m':'s':s) = (Delay (floor x `div` 10), s)
+    f (x,'c':'s':s) = (Delay (MkFixedPrec (floor x)), s)
+    f (x,'m':'s':s) = (Delay (MkFixedPrec (floor x `div` 10)), s)
     f (x,s) = (realToFrac (x :: Centi), s)
 
 
 -- | positions are counted 0-11 on mk1, 0-31 on mk2
-newtype PatternStep = PatternStep { patternStep :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read)
+newtype PatternStep = PatternStep { patternStep :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read, Typeable)
 
 instance Bounded PatternStep where
   minBound = PatternStep 0
@@ -132,7 +104,7 @@ data EEPROMAddr
   | EEBootMode
   | EESerialNum !Word8
   | EEPatternStart
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Typeable)
 
 serialNumLen :: Word8
 serialNumLen = 4
@@ -156,7 +128,7 @@ instance Bounded EEPROMAddr where
   maxBound = EEPatternStart
 
 -- | LEDs are 1-based (0 means "all")
-newtype LED = LED { whichLED :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read)
+newtype LED = LED { whichLED :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read, Typeable)
 
 instance Bounded LED where
   minBound = LED 1

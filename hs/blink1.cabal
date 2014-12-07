@@ -1,5 +1,5 @@
 Name:		blink1
-Version:	0.4
+Version:	0.4.1
 Author:		Dylan Simon
 Maintainer:     dylan@dylex.net
 License:        BSD3
@@ -20,7 +20,7 @@ Flag usb
 
 Library
     Build-Depends:	base == 4.*
-    Exposed-Modules:    System.Hardware.Blink1, System.Hardware.Blink1.Types, System.Hardware.Blink1.Class, System.Hardware.Blink1.Dummy
+    Exposed-Modules:    System.Hardware.Blink1, System.Hardware.Blink1.Types, System.Hardware.Blink1.Class, System.Hardware.Blink1.Dummy, Data.Fixed.Prec
     ghc-options: -Wall
 
     if os(linux)
