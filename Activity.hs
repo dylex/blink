@@ -1,52 +1,61 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, DeriveDataTypeable #-}
 module Activity
-  ( Action(..)
-  , Activity(..)
+  ( Activity(..)
+  , Solid(..)
   , Sequence
+  , Track(..)
+  , trackNorm
+  , trackSwitch
   ) where
 
 import Data.Monoid
+import Data.Typeable (Typeable)
 
+import Util
 import Time
 import Segment
 
-data Action = Action
-  { actSegment :: Segment
-  , actShift :: Interval -> Maybe Action
-  }
+class (Shiftable a, Typeable a) => Activity a where
+  actSegment :: a -> Segment
+  actShift :: Interval -> a -> Maybe a
+  actShift = (Just .) . shift
 
-class Shiftable a => Activity a where
-  activeSegment :: a -> Segment
+newtype Solid = Solid Color deriving (Typeable)
 
-instance Activity Color where
-  activity c = a where
-    a = Just $ Action (solid c) (const a)
+instance Shiftable Solid where
+  shift _ = id
+instance Activity Solid where
+  actSegment (Solid c) = solid c
 
 type Sequence = [Segment]
 
-current :: Sequence -> Segment
-current [] = mempty
-current (x:_) = x
-
 instance Shiftable Sequence where
-  shift [] _ = []
-  shift (f@(Segment _ l _) : r) t
-    | t >= l = shift r (t - l)
-    | otherwise = shift f t : r
-
+  shift t (f@(Segment _ l _) : r)
+    | t >= l = shift (t - l) r
+    | otherwise = shift t f : r
+  shift _ [] = []
 instance Activity Sequence where
-  activity [] = Nothing
-  activity l = Just $ Action (current l) (activity . shift l)
-
+  actSegment [] = mempty
+  actSegment (x:_) = x
+  actShift = (guard1 (not . null) .) . shift
 
 data Track = Track
   { trackSequence :: Sequence
   , trackOffset :: Int
   , trackShift :: Interval
-  }
+  } deriving (Typeable)
 
 instance Shiftable Track where
-  shift (Track [] o s) t = Track [] o (s+t)
-  shift (Track (f@(Segment _ l _) : r) o s) t
-    | t >= l = shift (Track r (succ o) 0) (t - l)
-    | otherwise = Track (shift f t : r) o (s + t)
+  shift t (Track [] o s) = Track [] o (s+t)
+  shift t (Track (f@(Segment _ l _) : r) o s)
+    | t >= l = shift (t - l) (Track r (succ o) 0) 
+    | otherwise = Track (shift t f : r) o (s + t)
+instance Activity Track where
+  actSegment = actSegment . trackSequence
+  actShift = (guard1 (not . null . trackSequence) .) . shift
+
+trackNorm :: Int -> Track -> Track
+trackNorm l t = t{ trackOffset = trackOffset t `mod` l }
+
+trackSwitch :: Sequence -> Track -> Track
+trackSwitch l (Track _ o s) = Track (drop o l) o s

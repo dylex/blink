@@ -37,7 +37,7 @@ instance (Integral i, HasResolution a) => Real (FixedPrec i a) where
 instance (Integral i, HasResolution a) => Fractional (FixedPrec i a) where
   MkFixedPrec x / MkFixedPrec y = p where p = MkFixedPrec (x * precResolution p `div` y) -- XXX: overflow
   recip p@(MkFixedPrec x) = MkFixedPrec (r * r `div` x) where r = precResolution p
-  fromRational r = p where p = MkFixedPrec (floor (r * toRational (resolution p)))
+  fromRational r = p where p = MkFixedPrec (round (r * toRational (resolution p)))
 instance (Integral i, HasResolution a) => RealFrac (FixedPrec i a) where
   properFraction p@(MkFixedPrec x) = fromIntegral *** MkFixedPrec $ x `divMod` precResolution p
   truncate p@(MkFixedPrec x) = fromIntegral (x `quot` precResolution p)

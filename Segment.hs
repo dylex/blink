@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, DeriveDataTypeable #-}
 module Segment
   ( Color
   , Segment(..)
@@ -8,6 +8,7 @@ module Segment
 
 import Control.Arrow (first)
 import Data.Monoid
+import Data.Typeable (Typeable)
 
 import System.Hardware.Blink1.Types (RGB, black, RGB8, LED)
 import System.Hardware.Blink1.Class (Blink1)
@@ -41,7 +42,7 @@ data Segment = Segment
   { segColor :: !Color
   , segInterval :: !Interval
   , segEnd :: !Color
-  }
+  } deriving (Typeable)
 
 solid :: Color -> Segment
 solid c = Segment c (1/0) c
@@ -53,7 +54,7 @@ interp (Segment s l e) r
   | otherwise = s + fmap (r / l *) (e - s)
 
 instance Shiftable Segment where
-  shift f@(Segment _ l e) t
+  shift t f@(Segment _ l e)
     | l > t = Segment (interp f t) (l - t) e
     | otherwise = mempty
 
