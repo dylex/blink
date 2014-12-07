@@ -1,17 +1,17 @@
 {-# LANGUAGE RankNTypes, DeriveDataTypeable #-}
 module Loadavg
   ( startLoadavg
+  , Loadavg
   , setColor
   ) where
 
 import Control.Applicative ((<$>), (<$))
-import Control.Concurrent (forkIOWithUnmask, ThreadId)
 import Control.Exception (Exception, throwTo, catch)
 import Control.Monad (when)
 import Data.Typeable (Typeable)
+import System.IO (withFile, IOMode(ReadMode), hGetLine)
 
-import System.Hardware.Blink1.Types (RGB(..))
-
+import Util
 import Time
 import Segment
 import Activity
@@ -26,16 +26,16 @@ data State = State
 update :: State -> Maybe Track -> Maybe Track
 update (State c l) = Just . maybe (track s) (trackSwitch 2 s) where
   s = cycle [Segment 0 l c, Segment c l 0]
-
+  
 load :: IO Interval
-load = li . rl <$> readFile "/proc/loadavg" where
+load = li . rl <$> withFile "/proc/loadavg" ReadMode hGetLine where
   rl = read . (!! 1) . words
   li l = min 60 $ max 0.5 $ 4/l
 
 newtype SetColor = SetColor Color deriving (Typeable, Show)
 instance Exception SetColor
 
-loadavg :: Globals -> (forall a . IO a -> IO a) -> IO ()
+loadavg :: Globals -> Unmask -> IO ()
 loadavg globals unmask = do
   key <- newKey (blinker1 globals)
 
@@ -50,10 +50,10 @@ loadavg globals unmask = do
 
   run True =<< State (RGB 0 0.5 0.5) <$> load
 
-newtype Loadavg = Loadavg { loadavgThread :: ThreadId }
+newtype Loadavg = Loadavg { _loadavgThread :: ThreadId }
 
 startLoadavg :: Globals -> IO Loadavg
-startLoadavg g = Loadavg <$> forkIOWithUnmask (loadavg g)
+startLoadavg = forkMasked Loadavg . loadavg
 
 setColor :: Loadavg -> Color -> IO ()
 setColor (Loadavg t) = throwTo t . SetColor

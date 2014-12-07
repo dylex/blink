@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, DeriveDataTypeable #-}
 module Segment
-  ( Color
+  ( Color, RGB(..)
   , Segment(..)
   , solid
   , blink
@@ -10,7 +10,7 @@ import Control.Arrow (first)
 import Data.Monoid
 import Data.Typeable (Typeable)
 
-import System.Hardware.Blink1.Types (RGB, black, RGB8, LED)
+import System.Hardware.Blink1.Types (RGB(..), black, RGB8, LED)
 import System.Hardware.Blink1.Class (Blink1)
 import System.Hardware.Blink1 (setColor2, fadeToColor2)
 

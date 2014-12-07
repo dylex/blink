@@ -7,7 +7,6 @@ module Blinker
   ) where
 
 import Control.Applicative ((<$>), (<$))
-import Control.Concurrent (ThreadId, forkIOWithUnmask)
 import Control.Exception (Exception, catch, throwTo)
 import Control.Monad (ap)
 import qualified Data.Map.Strict as Map
@@ -61,7 +60,7 @@ instance Show Update where
 
 instance Exception Update
 
-blinker :: Blink1 b => b -> Maybe LED -> (forall a . IO a -> IO a) -> IO ()
+blinker :: Blink1 b => b -> Maybe LED -> Unmask -> IO ()
 blinker b w unmask = run Map.empty where
   blnk = blink b w
   run acts = do
@@ -73,7 +72,7 @@ blinker b w unmask = run Map.empty where
     run $ Data.Foldable.foldr updateActs (Map.mapMaybe (guard1 active . shift dt) acts) u
 
 startBlinker :: Blink1 b => b -> Maybe LED -> IO Blinker
-startBlinker b w = Blinker <$> forkIOWithUnmask (blinker b w)
+startBlinker b = forkMasked Blinker . blinker b
 
 updateAction :: Activity a => Key a -> (Maybe a -> Maybe a) -> IO ()
 updateAction (Key k t) f = throwTo t (Update k f)
