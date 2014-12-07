@@ -48,14 +48,11 @@ struct segment {
 };
 
 enum led {
-	LED_NONE = 0,
-	LED_1,
-	LED_2,
+	LED_HARD = 0,
 	LED_LOAD_0,
 	LED_LOAD_1,
 	LED_COUNT
-#define LED_MAX	LED_COUNT
 };
-#define for_led(l) for (l = LED_MAX-1; (int)l >= 0; l--)
+#define for_led(l) for (l = LED_COUNT-1; (int)l >= 0; l--)
 
 #endif

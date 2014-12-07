@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 	if (remote_init(Listen_port, Connect_port) < 0)
 		fprintf(stderr, "remote_init: %m\n");
 
-	active_blink(LED_1, Blink1);
+	active_blink(LED_HARD, Blink1);
 	while (1)
 	{
 		interval_t d = active_run();

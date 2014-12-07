@@ -73,7 +73,7 @@ static void client_in(struct watch *w, uint8_t events)
 
 static struct watch Client = { .fd = -1, .fun = &client_in };
 
-static void client_connect(struct activity *act) 
+static void client_connect(struct activity *act, enum led led) 
 {
 	if ((Client.fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		fprintf(stderr, "remote socket: %m\n");
@@ -102,7 +102,7 @@ static void client_retry()
 		Client.fd = -1;
 	}
 
-	activity_add(&Client_retry);
+	activity_add(&Client_retry, 0);
 }
 
 
@@ -189,7 +189,7 @@ int remote_init(uint16_t listen_port, uint16_t connect_port)
 	{
 		assert(connect_port != listen_port);
 		Connect_addr.sin_port = htons(connect_port);
-		client_connect(NULL);
+		client_connect(NULL, 0);
 	}
 
 	if (listen_port)
