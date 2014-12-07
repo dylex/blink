@@ -11,21 +11,20 @@ module Activity
 import Data.Monoid
 import Data.Typeable (Typeable)
 
-import Util
 import Time
 import Segment
 
 class (Shiftable a, Typeable a) => Activity a where
-  actSegment :: a -> Segment
-  actShift :: Interval -> a -> Maybe a
-  actShift = (Just .) . shift
+  segment :: a -> Segment
+  active :: a -> Bool
+  active _ = True
 
 newtype Solid = Solid Color deriving (Typeable)
 
 instance Shiftable Solid where
   shift _ = id
 instance Activity Solid where
-  actSegment (Solid c) = solid c
+  segment (Solid c) = solid c
 
 type Sequence = [Segment]
 
@@ -35,9 +34,9 @@ instance Shiftable Sequence where
     | otherwise = shift t f : r
   shift _ [] = []
 instance Activity Sequence where
-  actSegment [] = mempty
-  actSegment (x:_) = x
-  actShift = (guard1 (not . null) .) . shift
+  segment [] = mempty
+  segment (x:_) = x
+  active = not . null
 
 data Track = Track
   { trackSequence :: Sequence
@@ -51,11 +50,13 @@ instance Shiftable Track where
     | t >= l = shift (t - l) (Track r (succ o) 0) 
     | otherwise = Track (shift t f : r) o (s + t)
 instance Activity Track where
-  actSegment = actSegment . trackSequence
-  actShift = (guard1 (not . null . trackSequence) .) . shift
+  segment = segment . trackSequence
+  active = active . trackSequence
 
 track :: Sequence -> Track
 track s = Track s 0 0
 
 trackSwitch :: Int -> Sequence -> Track -> Track
-trackSwitch n l (Track _ o s) = Track (drop o' l) o' s where o' = o `mod` n
+trackSwitch n l (Track (Segment _ t0 _:_) o s0) | f : r <- drop o' l =
+  let s' = s0 / (t0 + s0) * segInterval f in Track (shift s' f : r) o' s' where o' = o `mod` n
+trackSwitch _ l _ = track l

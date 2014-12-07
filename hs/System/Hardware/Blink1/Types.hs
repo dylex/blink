@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances, DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances, OverlappingInstances, DeriveDataTypeable #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module System.Hardware.Blink1.Types
   ( RGB(..), RGB8
@@ -20,6 +20,13 @@ import Data.Word (Word8, Word16)
 import Numeric (showHex, readHex)
 
 data RGB a = RGB { red, green, blue :: !a } deriving (Eq, Bounded, Typeable)
+
+instance (Show a, Num a) => Show (RGB a) where
+  showsPrec p (RGB r g b) = showParen (p > 10) $
+    showString "RGB "
+      . showsPrec 11 r . showChar ' '
+      . showsPrec 11 g . showChar ' '
+      . showsPrec 11 b
 
 instance Functor RGB where
   fmap f (RGB r g b) = RGB (f r) (f g) (f b)

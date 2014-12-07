@@ -74,7 +74,7 @@ main = do
         gf [b0] = Globals leds b0 b0
         gf ~[b1,b2] = Globals leds b1 b2
 
-  _ <- startLoadavg globals
+  loadavg <- startLoadavg globals
 
   _ <- getLine
   return ()

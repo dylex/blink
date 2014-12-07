@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, ScopedTypeVariables, DeriveDataTypeable, RankNTypes, ExistentialQuantification, ImpredicativeTypes #-}
+{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, RankNTypes #-}
 module Blinker
   ( newKey
   , Blinker
@@ -19,6 +19,7 @@ import qualified Data.Foldable (foldr)
 import System.Hardware.Blink1.Class (Blink1)
 import System.Hardware.Blink1.Types (LED)
 
+import Util
 import Time
 import Segment
 import Activity
@@ -45,8 +46,8 @@ data Act = forall a . Activity a => Act
 instance Shiftable Act where
   shift t (Act a) = Act (shift t a)
 instance Activity Act where
-  actSegment (Act a) = actSegment a
-  actShift t (Act a) = fmap Act (actShift t a)
+  segment (Act a) = segment a
+  active (Act a) = active a
 
 type Acts = Map.Map Unique Act
 
@@ -64,12 +65,12 @@ blinker :: Blink1 b => b -> Maybe LED -> (forall a . IO a -> IO a) -> IO ()
 blinker b w unmask = run Map.empty where
   blnk = blink b w
   run acts = do
-    t <- blnk $ mconcat $ map actSegment $ Map.elems acts
+    t <- blnk $ mconcat $ map segment $ Map.elems acts
     t0 <- now
     (dt, u) <-
       ((t, Nothing) <$ unmask (threadDelay t)) `catch`
       (ap ((,) . timeInterval t0 <$> now) . return . Just)
-    run $ Data.Foldable.foldr updateActs (Map.map (shift dt) acts) u
+    run $ Data.Foldable.foldr updateActs (Map.mapMaybe (guard1 active . shift dt) acts) u
 
 startBlinker :: Blink1 b => b -> Maybe LED -> IO Blinker
 startBlinker b w = Blinker <$> forkIOWithUnmask (blinker b w)

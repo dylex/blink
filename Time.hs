@@ -10,6 +10,7 @@ module Time
   , Shiftable(..)
   ) where
 
+import Control.Applicative ((<$))
 import qualified Control.Concurrent (threadDelay)
 import Data.Fixed (E6)
 import Data.Fixed.Prec
@@ -47,11 +48,9 @@ instance Bounded ThreadDelay where
   minBound = ThreadDelay 0
   maxBound = ThreadDelay maxBound
 
-delayMicroseconds :: Interval -> Int
-delayMicroseconds i = m where ThreadDelay (MkFixedPrec m) = realToBounded i
-
-threadDelay :: Interval -> IO ()
-threadDelay = Control.Concurrent.threadDelay . delayMicroseconds
+threadDelay :: Interval -> IO Interval
+threadDelay i = realToFrac d <$ Control.Concurrent.threadDelay m where
+  d@(ThreadDelay (MkFixedPrec m)) = realToBounded i
 
 class Monad m => Timed m where
   now :: m Time
