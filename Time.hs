@@ -5,11 +5,12 @@ module Time
   , timeInterval
   , delay
   , maxDelay
-  , delayMicroseconds
+  , threadDelay
   , now
   , Shiftable(..)
   ) where
 
+import qualified Control.Concurrent (threadDelay)
 import Data.Fixed (E6)
 import Data.Fixed.Prec
 import Data.Time.Clock (UTCTime, getCurrentTime, diffUTCTime)
@@ -48,6 +49,9 @@ instance Bounded ThreadDelay where
 
 delayMicroseconds :: Interval -> Int
 delayMicroseconds i = m where ThreadDelay (MkFixedPrec m) = realToBounded i
+
+threadDelay :: Interval -> IO ()
+threadDelay = Control.Concurrent.threadDelay . delayMicroseconds
 
 class Monad m => Timed m where
   now :: m Time

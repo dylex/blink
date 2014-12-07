@@ -4,7 +4,7 @@ module Activity
   , Solid(..)
   , Sequence
   , Track(..)
-  , trackNorm
+  , track
   , trackSwitch
   ) where
 
@@ -54,8 +54,8 @@ instance Activity Track where
   actSegment = actSegment . trackSequence
   actShift = (guard1 (not . null . trackSequence) .) . shift
 
-trackNorm :: Int -> Track -> Track
-trackNorm l t = t{ trackOffset = trackOffset t `mod` l }
+track :: Sequence -> Track
+track s = Track s 0 0
 
-trackSwitch :: Sequence -> Track -> Track
-trackSwitch l (Track _ o s) = Track (drop o l) o s
+trackSwitch :: Int -> Sequence -> Track -> Track
+trackSwitch n l (Track _ o s) = Track (drop o' l) o' s where o' = o `mod` n

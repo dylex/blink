@@ -1,12 +1,13 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, ScopedTypeVariables, DeriveDataTypeable, RankNTypes, ExistentialQuantification, ImpredicativeTypes #-}
 module Blinker
   ( newKey
-  , updateAction
+  , Blinker
   , startBlinker
+  , updateAction
   ) where
 
 import Control.Applicative ((<$>), (<$))
-import Control.Concurrent (ThreadId, forkIOWithUnmask, threadDelay)
+import Control.Concurrent (ThreadId, forkIOWithUnmask)
 import Control.Exception (Exception, catch, throwTo)
 import Control.Monad (ap)
 import qualified Data.Map.Strict as Map
@@ -22,35 +23,40 @@ import Time
 import Segment
 import Activity
 
-data Key a = Key { keyId :: Unique }
+newtype Blinker = Blinker { blinkerThread :: ThreadId }
 
-newKey :: Activity a => IO (Key a)
-newKey = Key <$> newUnique
+data Key a = Key 
+  { _keyId :: Unique
+  , _keyThreadId :: ThreadId
+  }
+
+newKey :: Activity a => Blinker -> IO (Key a)
+newKey = ap (Key <$> newUnique) . return . blinkerThread
 
 data Update = forall a . Activity a => Update
-  { _updateKey :: Key a
+  { _updateId :: Unique
   , _updateAct :: Maybe a -> Maybe a
   } deriving (Typeable)
 
-updateAction :: Activity a => Key a -> (Maybe a -> Maybe a) -> ThreadId -> IO ()
-updateAction k f t = throwTo t (Update k f)
+data Act = forall a . Activity a => Act
+  { _activity :: a
+  } deriving (Typeable)
 
-data SomeActivity = forall a . Activity a => SomeActivity a deriving (Typeable)
+instance Shiftable Act where
+  shift t (Act a) = Act (shift t a)
+instance Activity Act where
+  actSegment (Act a) = actSegment a
+  actShift t (Act a) = fmap Act (actShift t a)
 
-instance Shiftable SomeActivity where
-  shift t (SomeActivity a) = SomeActivity (shift t a)
-instance Activity SomeActivity where
-  actSegment (SomeActivity a) = actSegment a
+type Acts = Map.Map Unique Act
 
-type Activities = Map.Map Unique SomeActivity
-
-updateActions :: Update -> Activities -> Activities
-updateActions (Update (Key k) f) = Map.alter (fmap SomeActivity . up) k where
-  up (Just (SomeActivity a)) = f $ cast a
+updateActs :: Update -> Acts -> Acts
+updateActs (Update k f) = Map.alter (fmap Act . up) k where
+  up (Just (Act a)) = f $ cast a
   up Nothing = f Nothing
 
 instance Show Update where
-  show (Update k _) = "Update #" ++ (show (hashUnique (keyId k)))
+  show (Update k _) = "Update #" ++ (show (hashUnique k))
 
 instance Exception Update
 
@@ -59,12 +65,14 @@ blinker b w unmask = run Map.empty where
   blnk = blink b w
   run acts = do
     t <- blnk $ mconcat $ map actSegment $ Map.elems acts
-    let d = delayMicroseconds t
     t0 <- now
     (dt, u) <-
-      ((t, Nothing) <$ unmask (threadDelay d)) `catch`
+      ((t, Nothing) <$ unmask (threadDelay t)) `catch`
       (ap ((,) . timeInterval t0 <$> now) . return . Just)
-    run $ Data.Foldable.foldr updateActions (Map.map (shift dt) acts) u
+    run $ Data.Foldable.foldr updateActs (Map.map (shift dt) acts) u
 
-startBlinker :: Blink1 b => b -> Maybe LED -> IO ThreadId
-startBlinker b w = forkIOWithUnmask (blinker b w)
+startBlinker :: Blink1 b => b -> Maybe LED -> IO Blinker
+startBlinker b w = Blinker <$> forkIOWithUnmask (blinker b w)
+
+updateAction :: Activity a => Key a -> (Maybe a -> Maybe a) -> IO ()
+updateAction (Key k t) f = throwTo t (Update k f)
