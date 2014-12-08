@@ -18,6 +18,7 @@ import Globals
 import Blinker
 import Loadavg
 import Mail
+import Pinger
 
 data Blink1Dev = forall b . Blink1 b => Blink1Dev b
 
@@ -80,6 +81,7 @@ main = do
 
   loadavg <- startLoadavg globals
   startMail loadavg
+  startPinger globals
 
   _ <- getLine
   return ()

@@ -3,7 +3,7 @@ module Blinker
   ( newKey
   , Blinker
   , startBlinker
-  , updateAction
+  , updateAct
   ) where
 
 import Control.Applicative ((<$>), (<$))
@@ -74,5 +74,5 @@ blinker b w unmask = run Map.empty where
 startBlinker :: Blink1 b => b -> Maybe LED -> IO Blinker
 startBlinker b = forkMasked Blinker . blinker b
 
-updateAction :: Activity a => Key a -> (Maybe a -> Maybe a) -> IO ()
-updateAction (Key k t) f = throwTo t (Update k f)
+updateAct :: Activity a => Key a -> (Maybe a -> Maybe a) -> IO ()
+updateAct (Key k t) f = throwTo t (Update k f)

@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, DeriveDataTypeable #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Segment
   ( Color, RGB(..)
   , Segment(..)

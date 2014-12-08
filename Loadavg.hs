@@ -25,7 +25,7 @@ data State = State
 
 update :: State -> Maybe Track -> Maybe Track
 update (State c l) = Just . maybe (track s) (trackSwitch 2 s) where
-  s = cycle [Segment 0 l c, Segment c l 0]
+  s = Sequence $ cycle [Segment 0 l c, Segment c l 0]
   
 load :: IO Interval
 load = li . rl <$> withFile "/proc/loadavg" ReadMode hGetLine where
@@ -39,7 +39,7 @@ loadavg :: Globals -> Unmask -> IO ()
 loadavg globals unmask = do
   key <- newKey (blinker1 globals)
 
-  let change = updateAction key . update
+  let change = updateAct key . update
       run d s = do
         when d $ change s
         s' <- (s <$ unmask (threadDelay 60)) `catch`

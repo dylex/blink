@@ -15,6 +15,7 @@ import qualified Control.Concurrent (threadDelay)
 import Data.Fixed (E6)
 import Data.Fixed.Prec
 import Data.Time.Clock (UTCTime, getCurrentTime, diffUTCTime)
+import Data.Traversable (Traversable)
 
 import System.Hardware.Blink1.Types (Delay(..))
 
@@ -63,3 +64,5 @@ instance Timed ((->) Time) where
 
 class Shiftable a where
   shift :: Interval -> a -> a
+instance (Shiftable a, Traversable f) => Shiftable (f a) where
+  shift = fmap . shift

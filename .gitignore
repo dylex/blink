@@ -1,5 +1,7 @@
 .depend
 *.[os]
 *.hi
+/Pinger.hs
 /blinkd
 /blink
+/blinkhd

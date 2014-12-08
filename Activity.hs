@@ -2,13 +2,15 @@
 module Activity
   ( Activity(..)
   , Solid(..)
-  , Sequence
+  , Sequence(..)
   , Track(..)
   , track
   , trackSwitch
   ) where
 
+import Data.Foldable (foldMap, any)
 import Data.Monoid
+import Data.Traversable (Traversable)
 import Data.Typeable (Typeable)
 
 import Time
@@ -19,6 +21,10 @@ class (Shiftable a, Typeable a) => Activity a where
   active :: a -> Bool
   active _ = True
 
+instance (Activity a, Traversable f, Typeable f) => Activity (f a) where
+  segment = foldMap segment
+  active = Data.Foldable.any active
+
 newtype Solid = Solid Color deriving (Typeable)
 
 instance Shiftable Solid where
@@ -26,20 +32,20 @@ instance Shiftable Solid where
 instance Activity Solid where
   segment (Solid c) = solid c
 
-type Sequence = [Segment]
+newtype Sequence = Sequence { unSequence :: [Segment] } deriving (Typeable)
 
 instance Shiftable Sequence where
-  shift t (f@(Segment _ l _) : r)
-    | t >= l = shift (t - l) r
-    | otherwise = shift t f : r
-  shift _ [] = []
+  shift t (Sequence (f@(Segment _ l _) : r))
+    | t >= l = shift (t - l) (Sequence r)
+    | otherwise = Sequence $ shift t f : r
+  shift _ s = s
 instance Activity Sequence where
-  segment [] = mempty
-  segment (x:_) = x
-  active = not . null
+  segment (Sequence []) = mempty
+  segment (Sequence (x:_)) = x
+  active = not . null . unSequence
 
 data Track = Track
-  { trackSequence :: Sequence
+  { trackSequence :: [Segment]
   , trackOffset :: Int
   , trackShift :: Interval
   } deriving (Typeable)
@@ -50,13 +56,13 @@ instance Shiftable Track where
     | t >= l = shift (t - l) (Track r (succ o) 0) 
     | otherwise = Track (shift t f : r) o (s + t)
 instance Activity Track where
-  segment = segment . trackSequence
-  active = active . trackSequence
+  segment = segment . Sequence . trackSequence
+  active = active . Sequence . trackSequence
 
 track :: Sequence -> Track
-track s = Track s 0 0
+track (Sequence s) = Track s 0 0
 
 trackSwitch :: Int -> Sequence -> Track -> Track
-trackSwitch n l (Track (Segment _ t0 _:_) o s0) | f : r <- drop o' l =
+trackSwitch n (Sequence l) (Track (Segment _ t0 _:_) o s0) | f : r <- drop o' l =
   let s' = s0 / (t0 + s0) * segInterval f in Track (shift s' f : r) o' s' where o' = o `mod` n
 trackSwitch _ l _ = track l

@@ -4,12 +4,22 @@ LDFLAGS=-g -lm
 BINDIR=/usr/bin
 
 FILES=blinkd mail loadavg pinger purple command remote activity notify watch blink1
-PROGS=blinkd blink
+PROGS=blinkd blink blinkhd
 
 default: $(PROGS)
 
 blinkd: $(addsuffix .o,$(FILES))
 blink: blink.o
+
+HSC=Pinger
+
+blinkhd: Pinger.hs
+
+%: %.hs FORCE
+	ghc --make -Wall $@
+
+%.hs: %.hsc
+	hsc2hs $<
 
 clean:
 	rm -f *.o blink blink1d
@@ -20,4 +30,5 @@ clean:
 install: $(PROGS)
 	install -t $(BINDIR) $^
 
+.PHONY: FORCE
 include .depend
