@@ -14,11 +14,11 @@ import System.Hardware.Blink1.Dummy (openDummy)
 import System.Hardware.Blink1.Linux (openRawHID, openRawDev)
 import System.Hardware.Blink1 (closeBlink1, getVersion)
 
-import Globals
 import Blinker
 import Loadavg
 import Mail
 import Pinger
+import Purple
 
 data Blink1Dev = forall b . Blink1 b => Blink1Dev b
 
@@ -75,13 +75,12 @@ main = do
 
   bs <- mapM (startBlinker b) (maybe [Nothing] (map Just . enumFromTo minBound) leds)
   
-  let globals = gf bs where 
-        gf [b0] = Globals leds b0 b0
-        gf ~[b1,b2] = Globals leds b1 b2
+  let led1:_:_ = cycle bs
 
-  loadavg <- startLoadavg globals
+  loadavg <- startLoadavg led1
   startMail loadavg
-  startPinger globals
+  startPinger led1
+  purple <- initPurple led1
 
   _ <- getLine
   return ()

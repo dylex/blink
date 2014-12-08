@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, RankNTypes #-}
 module Blinker
-  ( newKey
+  ( Key
+  , newKey
   , Blinker
   , startBlinker
   , updateAct

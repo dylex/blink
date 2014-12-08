@@ -15,7 +15,6 @@ import Util
 import Time
 import Segment
 import Activity
-import Globals
 import Blinker
 
 data State = State
@@ -33,9 +32,9 @@ interval l = min 60 $ max 0.5 $ 4 / read (words l !! 1)
 newtype SetColor = SetColor Color deriving (Typeable, Show)
 instance Exception SetColor
 
-loadavg :: Globals -> Unmask -> IO ()
-loadavg globals unmask = withFile "/proc/loadavg" ReadMode $ \h -> do
-  key <- newKey (blinker1 globals)
+loadavg :: Blinker -> Unmask -> IO ()
+loadavg blinker unmask = withFile "/proc/loadavg" ReadMode $ \h -> do
+  key <- newKey blinker
 
   let load = do
         hSeek h AbsoluteSeek 0
@@ -53,7 +52,7 @@ loadavg globals unmask = withFile "/proc/loadavg" ReadMode $ \h -> do
 
 newtype Loadavg = Loadavg { _loadavgThread :: ThreadId }
 
-startLoadavg :: Globals -> IO Loadavg
+startLoadavg :: Blinker -> IO Loadavg
 startLoadavg = forkMasked Loadavg . loadavg
 
 setColor :: Loadavg -> Color -> IO ()
