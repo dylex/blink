@@ -1,5 +1,6 @@
 module Purple
-  ( initPurple
+  ( Purple
+  , initPurple
   , updatePurple
   ) where
 

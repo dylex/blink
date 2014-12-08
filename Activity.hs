@@ -8,7 +8,7 @@ module Activity
   , trackSwitch
   ) where
 
-import Data.Foldable (foldMap, any)
+import qualified Data.Foldable (foldMap, any)
 import Data.Monoid
 import Data.Traversable (Traversable)
 import Data.Typeable (Typeable)
@@ -22,7 +22,7 @@ class (Shiftable a, Typeable a) => Activity a where
   active _ = True
 
 instance (Activity a, Traversable f, Typeable f) => Activity (f a) where
-  segment = foldMap segment
+  segment = Data.Foldable.foldMap segment
   active = Data.Foldable.any active
 
 newtype Solid = Solid Color deriving (Typeable)
