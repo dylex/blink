@@ -9,7 +9,7 @@ import Control.Applicative ((<$>), (<$))
 import Control.Exception (Exception, throwTo, catch)
 import Control.Monad (when)
 import Data.Typeable (Typeable)
-import System.IO (withFile, IOMode(ReadMode), hGetLine)
+import System.IO (withFile, IOMode(ReadMode), hGetLine, hSeek, SeekMode(AbsoluteSeek))
 
 import Util
 import Time
@@ -27,19 +27,20 @@ update :: State -> Maybe Track -> Maybe Track
 update (State c l) = Just . maybe (track s) (trackSwitch 2 s) where
   s = Sequence $ cycle [Segment 0 l c, Segment c l 0]
   
-load :: IO Interval
-load = li . rl <$> withFile "/proc/loadavg" ReadMode hGetLine where
-  rl = read . (!! 1) . words
-  li l = min 60 $ max 0.5 $ 4/l
+interval :: String -> Interval
+interval l = min 60 $ max 0.5 $ 4 / read (words l !! 1)
 
 newtype SetColor = SetColor Color deriving (Typeable, Show)
 instance Exception SetColor
 
 loadavg :: Globals -> Unmask -> IO ()
-loadavg globals unmask = do
+loadavg globals unmask = withFile "/proc/loadavg" ReadMode $ \h -> do
   key <- newKey (blinker1 globals)
 
-  let change = updateAct key . update
+  let load = do
+        hSeek h AbsoluteSeek 0
+        interval <$> hGetLine h
+      change = updateAct key . update
       run d s = do
         when d $ change s
         s' <- (s <$ unmask (threadDelay 60)) `catch`
