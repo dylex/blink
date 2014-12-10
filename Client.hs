@@ -6,6 +6,7 @@ import Control.Concurrent (forkIO)
 import Control.Exception (bracket)
 import Control.Monad (void, forever, when)
 import qualified Data.ByteString as BS
+import Data.Monoid (mempty)
 import qualified Network.Socket as Net
 import qualified Network.Socket.ByteString as Net.BS
 import System.IO (hPutStrLn, stderr)
@@ -20,13 +21,14 @@ connect server addr =
   bracket (Net.socket Net.AF_INET Net.Stream Net.defaultProtocol) Net.close $ \sock -> do
     Net.connect sock addr
     -- Net.shutdown sock Net.ShutdownSend
-    let run = do
+    let run o = do
           r <- Net.BS.recv sock 60
           when (BS.null r) $ ioError $ mkIOError eofErrorType "recv" Nothing Nothing
           let s = decodeState (BS.last r)
-          updateServer server (const s)
-          run
-    run
+          print s
+          updateServer server (stateUpdate o s)
+          run s
+    run mempty
 
 client :: Server -> Net.PortNumber -> IO ()
 client server port = do
