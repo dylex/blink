@@ -1,6 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
 import Control.Applicative ((<$>))
+import Control.Concurrent.MVar (newEmptyMVar, takeMVar, putMVar)
 import Control.Exception (bracket)
 import Control.Monad (unless)
 import qualified Data.Foldable (mapM_)
@@ -90,7 +91,10 @@ main = do
       ol n = error ("unsupported LED count: " ++ show n)
     in maybe (vl <$> getVersion b) (return . ol) $ optLEDs opts
 
-  bs <- mapM (startBlinker b) (maybe [Nothing] (map Just . enumFromTo minBound) leds)
+  wait <- newEmptyMVar
+  let done = putMVar wait ()
+
+  bs <- mapM (startBlinker done b) (maybe [Nothing] (map Just . enumFromTo minBound) leds)
   
   let led1:_:_ = cycle bs
 
@@ -101,5 +105,4 @@ main = do
   startPinger led1
   Data.Foldable.mapM_ (startClient server) (optConnect opts)
 
-  _ <- getLine
-  return ()
+  takeMVar wait

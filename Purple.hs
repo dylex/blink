@@ -5,6 +5,7 @@ module Purple
   ) where
 
 import Control.Applicative ((<$>))
+import Control.Monad (guard)
 import Data.List (intersperse)
 
 import Time
@@ -22,9 +23,10 @@ flash :: Color -> Segment
 flash c = Segment c duration c
 
 activity :: Int -> Maybe Sequence
-activity 0 = Nothing
-activity n = Just $ Sequence $ cycle $
-  intersperse (flash 0) (replicate n (flash color)) ++ [Segment 0 (3*duration) 0]
+activity n = do
+  guard (n > 0)
+  return $ Sequence $ cycle $
+    intersperse (flash 0) (replicate n (flash color)) ++ [Segment 0 (3*duration) 0]
 
 newtype Purple = Purple { _purpleKey :: Key Sequence }
 
