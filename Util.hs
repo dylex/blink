@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Util
   ( guard1
+  , guardEndo
   , forkMasked, Unmask, ThreadId
   ) where
 
@@ -12,6 +13,10 @@ guard1 :: Alternative f => (a -> Bool) -> a -> f a
 guard1 g x -- = x <$ guard (g x)
   | g x = pure x
   | otherwise = empty
+
+guardEndo :: Bool -> (a -> a) -> (a -> a)
+guardEndo False _ = id
+guardEndo True f = f
 
 type Unmask = forall a . IO a -> IO a
 

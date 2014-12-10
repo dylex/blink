@@ -2,7 +2,7 @@
 module Loadavg
   ( startLoadavg
   , Loadavg
-  , setColor
+  , setLoadavgColor
   ) where
 
 import Control.Applicative ((<$>), (<$))
@@ -55,5 +55,5 @@ newtype Loadavg = Loadavg { _loadavgThread :: ThreadId }
 startLoadavg :: Blinker -> IO Loadavg
 startLoadavg = forkMasked Loadavg . loadavg
 
-setColor :: Loadavg -> Color -> IO ()
-setColor (Loadavg t) = throwTo t . SetColor
+setLoadavgColor :: Loadavg -> Color -> IO ()
+setLoadavgColor (Loadavg t) = throwTo t . SetColor

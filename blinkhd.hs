@@ -5,7 +5,7 @@ import Control.Exception (bracket)
 import Control.Monad (unless)
 import qualified Data.Foldable (mapM_)
 import Data.List (foldl')
-import Network.Socket (PortNumber(..))
+import Network.Socket (PortNumber)
 import System.Directory (setCurrentDirectory, getHomeDirectory)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
@@ -22,7 +22,8 @@ import Loadavg
 import Mail
 import Pinger
 import Purple
-import Connect
+import Server
+import Client
 
 data Blink1Dev = forall b . Blink1 b => Blink1Dev b
 
@@ -37,8 +38,8 @@ defaultOptions :: Options
 defaultOptions = Options
   { optDevice = Blink1Dev <$> openRawHID
   , optLEDs = Nothing
-  , optListen = Nothing -- Just 16652
-  , optConnect = Nothing -- Just 6652
+  , optListen = Just 16652
+  , optConnect = Just 6652
   }
 
 options :: [Opt.OptDescr (Options -> Options)]
@@ -53,10 +54,10 @@ options =
       (Opt.ReqArg (\l o -> o{ optLEDs = Just (read l) }) "COUNT")
       "set the number of addressable LEDs"
   , Opt.Option "l" ["listen"]
-      (Opt.OptArg (\p o -> o{ optListen = fmap (PortNum . read) p }) "PORT")
+      (Opt.OptArg (\p o -> o{ optListen = fmap (toEnum . read) p }) "PORT")
       ("(don't) listen on localhost:PORT serving events" ++ maybe "" ((" [" ++) . (++ "]") . show) (optListen defaultOptions))
   , Opt.Option "c" ["connect"]
-      (Opt.OptArg (\p o -> o{ optConnect = fmap (PortNum . read) p }) "PORT")
+      (Opt.OptArg (\p o -> o{ optConnect = fmap (toEnum . read) p }) "PORT")
       ("(don't) connect to localhost:PORT for events" ++ maybe "" ((" [" ++) . (++ "]") . show) (optConnect defaultOptions))
   ]
 
@@ -94,10 +95,11 @@ main = do
   let led1:_:_ = cycle bs
 
   loadavg <- startLoadavg led1
-  startMail loadavg
-  startPinger led1
   purple <- initPurple led1
-  Data.Foldable.mapM_ (startConnect purple) (optConnect opts)
+  server <- startServer loadavg purple (optListen opts)
+  startMail server
+  startPinger led1
+  Data.Foldable.mapM_ (startClient server) (optConnect opts)
 
   _ <- getLine
   return ()

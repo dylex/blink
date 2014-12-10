@@ -5,13 +5,14 @@ module Mail
 import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO)
 import Control.Exception (bracket)
-import Control.Monad (void, when)
+import Control.Monad (void)
 import Data.Monoid ((<>))
 import System.Directory (getDirectoryContents)
 import qualified System.Linux.Inotify as Inotify
 
-import Segment
-import Loadavg
+import Util
+import State
+import Server
 
 dir :: FilePath
 dir = "mail/spool/new"
@@ -28,26 +29,17 @@ maskNew, maskOld :: Inotify.Mask a
 maskNew = Inotify.in_CREATE <> Inotify.in_MOVED_TO
 maskOld = Inotify.in_DELETE <> Inotify.in_MOVED_FROM
 
-color :: Int -> Color
-color 0 = RGB 0 0 0.5
-color n
-  | n > 0 = RGB 0 0.5 0
-  | otherwise = RGB 0 0.5 0.5
-
-mail :: Loadavg -> IO ()
-mail loadavg = bracket Inotify.init Inotify.close $ \inotify -> do
+mail :: Server -> IO ()
+mail server = bracket Inotify.init Inotify.close $ \inotify -> do
   wd <- Inotify.addWatch inotify dir (maskOld <> maskNew)
-  let run o n = do
-        let c = color n
-        when (o /= c) $ setColor loadavg c
+  let run n = do
+        updateServer server $ \s -> s{ stateMail = n }
         ev <- Inotify.getEvent inotify
         let mf m = Inotify.wd ev == wd && Inotify.hasOverlap (Inotify.mask ev) m
-            g m f
-              | mf m = f
-              | otherwise = id
+            g = guardEndo . mf
             n' = (g maskNew succ) . (g maskOld pred) $ n
-        run c n'
-  run 0 =<< check
+        run n'
+  run =<< check
 
-startMail :: Loadavg -> IO ()
-startMail l = void $ forkIO (mail l)
+startMail :: Server -> IO ()
+startMail s = void $ forkIO (mail s)
