@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 {-|
   This a more general version of Data.Fixed that allows any Integral as the underlying representation.  It is very much like Data.Fixed.Binary (from fixed-point), but is not binary.
 -}
@@ -18,11 +18,16 @@ newtype FixedPrec i a = MkFixedPrec i deriving (Eq, Ord, Enum, Bounded, Typeable
 precResolution :: (HasResolution a, Integral i) => FixedPrec i a -> i
 precResolution = fromInteger . resolution
 
-fixedFromPrec :: Integral i => FixedPrec i a -> Fixed a
-fixedFromPrec (MkFixedPrec i) = MkFixed (toInteger i)
+fixedFromPrec :: (Integral i, HasResolution a) => FixedPrec i a -> Fixed a
+fixedToPrec :: (Integral i, HasResolution a) => Fixed a -> FixedPrec i a
 
-fixedToPrec :: Integral i => Fixed a -> FixedPrec i a
+#if MIN_VERSION_base(4,7,0)
+fixedFromPrec (MkFixedPrec i) = MkFixed (toInteger i)
 fixedToPrec (MkFixed i) = MkFixedPrec (fromInteger i)
+#else
+fixedFromPrec = realToFrac
+fixedToPrec = realToFrac
+#endif
 
 instance (Integral i, HasResolution a) => Num (FixedPrec i a) where
   MkFixedPrec x + MkFixedPrec y = MkFixedPrec (x + y)
