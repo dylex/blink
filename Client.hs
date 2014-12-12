@@ -25,7 +25,7 @@ connect server addr =
           r <- Net.BS.recv sock 60
           when (BS.null r) $ ioError $ mkIOError eofErrorType "recv" Nothing Nothing
           let s = decodeState (BS.last r)
-          print s
+          -- print s
           updateServer server (stateUpdate o s)
           run s
     run mempty

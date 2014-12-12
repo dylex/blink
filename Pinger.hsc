@@ -20,7 +20,6 @@ import Time
 import Segment
 import Activity
 import Blinker
-import Globals
 
 color :: Float -> Color
 color pt = RGB (c pt) 0 0 where
@@ -45,9 +44,9 @@ ping pd = alloca $ \p -> do
   throwErrnoIfMinus1_ "ioctl(PINGDEV_GET_PING)" $ _ioctlPing pd (#const PINGDEV_GET_PING) p
   peek p
 
-pinger :: Globals -> IO ()
-pinger globals = bracket (openFd "/dev/ping" ReadOnly Nothing defaultFileFlags) (closeFd) $ \pd -> do
-  k <- newKey (blinker1 globals)
+pinger :: Blinker -> IO ()
+pinger blinker = bracket (openFd "/dev/ping" ReadOnly Nothing defaultFileFlags) (closeFd) $ \pd -> do
+  k <- newKey blinker
   i <- pingInterval pd
   let run c = do
         threadWaitRead pd
@@ -60,5 +59,5 @@ pinger globals = bracket (openFd "/dev/ping" ReadOnly Nothing defaultFileFlags) 
         
   run 0
 
-startPinger :: Globals -> IO ()
-startPinger g = void $ forkIO (pinger g)
+startPinger :: Blinker -> IO ()
+startPinger = void . forkIO . pinger

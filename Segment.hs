@@ -74,7 +74,7 @@ instance Monoid Segment where
 blink :: Blink1 b => b -> Maybe LED -> Segment -> IO Interval
 blink b w f@(Segment s l _) | l < 0 = fail ("invalid segment delay: " ++ show l)
   | otherwise = do
-  putStrLn (show w ++ ": " ++ show f)
+  -- putStrLn (show w ++ ": " ++ show f)
   setColor2 b w (rgb s)
   if isInfinite l
     then return l
