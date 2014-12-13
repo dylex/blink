@@ -75,13 +75,14 @@ instance Monoid Segment where
     Segment s2 _ e2 = trunc l f2
 
 blink :: Blink1 b => b -> Maybe LED -> Maybe Color -> Segment -> IO Interval
-blink b w cur f@(Segment s l _) | l < 0 = fail ("invalid segment delay: " ++ show l)
+blink b w cur f@(Segment s l e) | l < 0 = fail ("invalid segment delay: " ++ show l)
   | otherwise = do
-  let s' = rgb s
-  when (Data.Foldable.all ((/=) s' . rgb) cur) $ setColor2 b w s'
-  if isInfinite l
+  let s8 = rgb s
+  when (Data.Foldable.all ((/=) s8 . rgb) cur) $ setColor2 b w s8
+  if isInfinite l || rgb e == s8
     then return l
     else do
-      let Segment _ l' e = trunc maxDelay f
-      fadeToColor2 b w (delay l') (rgb e)
+      let Segment _ l' e' = trunc maxDelay f
+          e8' = rgb e'
+      when (e8' /= s8) $ fadeToColor2 b w (delay l') e8'
       return l'
