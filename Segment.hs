@@ -4,10 +4,13 @@ module Segment
   ( Color, RGB(..)
   , Segment(..)
   , solid
+  , interp
   , blink
   ) where
 
 import Control.Arrow (first)
+import Control.Monad (when)
+import qualified Data.Foldable (all)
 import Data.Monoid
 import Data.Typeable (Typeable)
 
@@ -71,11 +74,12 @@ instance Monoid Segment where
     Segment s1 _ e1 = trunc l f1
     Segment s2 _ e2 = trunc l f2
 
-blink :: Blink1 b => b -> Maybe LED -> Segment -> IO Interval
-blink b w f@(Segment s l _) | l < 0 = fail ("invalid segment delay: " ++ show l)
+blink :: Blink1 b => b -> Maybe LED -> Maybe Color -> Segment -> IO Interval
+blink b w cur f@(Segment s l _) | l < 0 = fail ("invalid segment delay: " ++ show l)
   | otherwise = do
   -- putStrLn (show w ++ ": " ++ show f)
-  setColor2 b w (rgb s)
+  let s' = rgb s
+  when (Data.Foldable.all ((/=) s' . rgb) cur) $ setColor2 b w s'
   if isInfinite l
     then return l
     else do

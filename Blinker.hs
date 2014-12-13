@@ -7,7 +7,7 @@ module Blinker
   , updateAct
   ) where
 
-import Control.Applicative ((<$>), (<$))
+import Control.Applicative ((<$>))
 import Control.Exception (Exception, catch, throwTo, finally)
 import Control.Monad (ap)
 import qualified Data.Map.Strict as Map
@@ -62,15 +62,15 @@ instance Show Update where
 instance Exception Update
 
 blinker :: Blink1 b => IO () -> b -> Maybe LED -> Unmask -> IO ()
-blinker done b w unmask = run Map.empty `finally` done where
-  blnk = blink b w
-  run acts = do
-    t <- blnk $ mconcat $ map segment $ Map.elems acts
+blinker done b w unmask = run Nothing Map.empty `finally` done where
+  run cur acts = do
+    let seg = mconcat $ map segment $ Map.elems acts
+    t <- blink b w cur seg
     t0 <- now
     (dt, u) <-
-      ((t, Nothing) <$ unmask (threadDelay t)) `catch`
+      (flip (,) Nothing <$> unmask (threadDelay t)) `catch`
       (ap ((,) . timeInterval t0 <$> now) . return . Just)
-    run $ Data.Foldable.foldr updateActs (Map.mapMaybe (guard1 active . shift dt) acts) u
+    run (Just $ interp seg dt) $ Data.Foldable.foldr updateActs (Map.mapMaybe (guard1 active . shift dt) acts) u
 
 startBlinker :: Blink1 b => IO () -> b -> Maybe LED -> IO Blinker
 startBlinker done b = forkMasked Blinker . blinker done b
