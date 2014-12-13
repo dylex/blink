@@ -7,7 +7,7 @@ module State
 
 import Control.Applicative ((<$>))
 import Data.Binary (Binary(..), putWord8, getWord8)
-import Data.Bits (finiteBitSize, setBit, unsafeShiftR, clearBit)
+import Data.Bits
 import Data.Monoid
 import Data.Word (Word8)
 
@@ -48,7 +48,7 @@ stateUpdate :: State -> State -> State -> State
 stateUpdate old new cur = stateRemove old cur <> new
 
 mailBit :: Int
-mailBit = pred $ finiteBitSize (0 :: Word8)
+mailBit = 7 -- pred $ finiteBitSize (0 :: Word8)
 
 encodeState :: State -> Word8
 encodeState (State m p) = guardEndo (m > 0) (`setBit` mailBit) (clearBit (fromIntegral (max 0 p)) mailBit)
