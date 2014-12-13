@@ -53,7 +53,7 @@ data Track = Track
 instance Shiftable Track where
   shift t (Track [] o s) = Track [] o (s+t)
   shift t (Track (f@(Segment _ l _) : r) o s)
-    | t >= l = shift (t - l) (Track r (succ o) 0) 
+    | t >= l = shift (t - l) (Track r (succ o) 0)
     | otherwise = Track (shift t f : r) o (s + t)
 instance Activity Track where
   segment = segment . Sequence . trackSequence

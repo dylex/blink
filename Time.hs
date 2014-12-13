@@ -4,7 +4,7 @@ module Time
   , Interval
   , timeInterval
   , delay
-  , maxDelay
+  , maxDelay, minDelay
   , threadDelay
   , now
   , Shiftable(..)
@@ -12,6 +12,7 @@ module Time
 
 import Control.Applicative ((<$))
 import qualified Control.Concurrent (threadDelay)
+import Control.Concurrent.MVar (newEmptyMVar, takeMVar)
 import Data.Fixed (E6)
 import Data.Fixed.Prec
 import Data.Time.Clock (UTCTime, getCurrentTime, diffUTCTime)
@@ -46,12 +47,19 @@ delay = realToBounded
 newtype ThreadDelay = ThreadDelay (FixedPrec Int E6) deriving (Eq, Ord, Enum, Num, Real, Fractional, RealFrac)
 
 instance Bounded ThreadDelay where
-  minBound = ThreadDelay 0
+  minBound = ThreadDelay (MkFixedPrec 1)
   maxBound = ThreadDelay maxBound
 
+minDelay :: Interval
+minDelay = realToFrac (minBound :: ThreadDelay)
+
 threadDelay :: Interval -> IO Interval
-threadDelay i = realToFrac d <$ Control.Concurrent.threadDelay m where
-  d@(ThreadDelay (MkFixedPrec m)) = realToBounded i
+threadDelay i
+  | isInfinite i = do
+    -- there must be a better way to do this (that won't possibly trigger BlockedIndefinitely)..
+    takeMVar =<< newEmptyMVar
+  | otherwise = realToFrac d <$ Control.Concurrent.threadDelay m where
+    d@(ThreadDelay (MkFixedPrec m)) = realToBounded i
 
 class Monad m => Timed m where
   now :: m Time

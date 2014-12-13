@@ -77,7 +77,6 @@ instance Monoid Segment where
 blink :: Blink1 b => b -> Maybe LED -> Maybe Color -> Segment -> IO Interval
 blink b w cur f@(Segment s l _) | l < 0 = fail ("invalid segment delay: " ++ show l)
   | otherwise = do
-  -- putStrLn (show w ++ ": " ++ show f)
   let s' = rgb s
   when (Data.Foldable.all ((/=) s' . rgb) cur) $ setColor2 b w s'
   if isInfinite l

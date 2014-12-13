@@ -7,7 +7,7 @@ module Blinker
   , updateAct
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<$))
 import Control.Exception (Exception, catch, throwTo, finally)
 import Control.Monad (ap)
 import qualified Data.Map.Strict as Map
@@ -67,8 +67,9 @@ blinker done b w unmask = run Nothing Map.empty `finally` done where
     let seg = mconcat $ map segment $ Map.elems acts
     t <- blink b w cur seg
     t0 <- now
+    -- putStrLn (show seg ++ ", " ++ show t)
     (dt, u) <-
-      (flip (,) Nothing <$> unmask (threadDelay t)) `catch`
+      ((t, Nothing) <$ unmask (threadDelay t)) `catch`
       (ap ((,) . timeInterval t0 <$> now) . return . Just)
     run (Just $ interp seg dt) $ Data.Foldable.foldr updateActs (Map.mapMaybe (guard1 active . shift dt) acts) u
 
