@@ -28,10 +28,10 @@ activity n = do
   return $ Sequence $ cycle $
     intersperse (flash 0) (replicate n (flash color)) ++ [Segment 0 (3*duration) 0]
 
-newtype Purple = Purple { _purpleKey :: Key Sequence }
+newtype Purple = Purple { _purpleKey :: ActKey Sequence }
 
 initPurple :: Blinker -> IO Purple
-initPurple blinker = Purple <$> newKey blinker
+initPurple blinker = Purple <$> newActKey blinker
 
 updatePurple :: Purple -> Int -> IO ()
 updatePurple (Purple k) n = updateAct k (const $ activity n)

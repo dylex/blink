@@ -34,7 +34,7 @@ instance Exception SetColor
 
 loadavg :: Blinker -> Unmask -> IO ()
 loadavg blinker unmask = withFile "/proc/loadavg" ReadMode $ \h -> do
-  key <- newKey blinker
+  key <- newActKey blinker
 
   let load = do
         hSeek h AbsoluteSeek 0
