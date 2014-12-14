@@ -9,7 +9,9 @@ module Data.Fixed.Prec
   , fixedFromPrec
   ) where
 
+import Control.Applicative ((<$>))
 import Control.Arrow ((***), first)
+import Data.Binary (Binary(..))
 import Data.Fixed
 import Data.Typeable (Typeable)
 
@@ -54,3 +56,7 @@ instance (Integral i, HasResolution a) => Show (FixedPrec i a) where
   showsPrec p = showsPrec p . fixedFromPrec
 instance (Integral i, HasResolution a) => Read (FixedPrec i a) where
   readsPrec p = map (first fixedToPrec) . readsPrec p
+
+instance Binary i => Binary (FixedPrec i a) where
+  put (MkFixedPrec i) = put i
+  get = MkFixedPrec <$> get

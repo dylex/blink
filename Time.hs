@@ -3,7 +3,7 @@ module Time
   ( Time
   , Interval
   , timeInterval
-  , delay
+  , fromDelay, toDelay
   , maxDelay, minDelay
   , threadDelay
   , now
@@ -26,11 +26,11 @@ type Interval = Float
 timeInterval :: Time -> Time -> Interval
 timeInterval t0 t1 = realToFrac (t1 `diffUTCTime` t0)
 
-interval :: Delay -> Interval
-interval = realToFrac
+fromDelay :: Delay -> Interval
+fromDelay = realToFrac
 
 maxDelay :: Interval
-maxDelay = interval maxBound
+maxDelay = fromDelay maxBound
 
 realToBounded :: (RealFrac a, Bounded b, RealFrac b) => a -> b
 realToBounded x
@@ -41,8 +41,8 @@ realToBounded x
     mx = maxBound
     mn = minBound
 
-delay :: Interval -> Delay
-delay = realToBounded
+toDelay :: Interval -> Delay
+toDelay = realToBounded
 
 newtype ThreadDelay = ThreadDelay (FixedPrec Int E6) deriving (Eq, Ord, Enum, Num, Real, Fractional, RealFrac)
 

@@ -11,7 +11,9 @@ module System.Hardware.Blink1.Types
   , LED(..)
   ) where
 
-import Control.Applicative
+import Control.Applicative (Applicative(..), liftA2)
+import Control.Monad (liftM3)
+import Data.Binary (Binary(..))
 import Data.Fixed (E2, Centi)
 import Data.Fixed.Prec
 import Data.Monoid (Monoid(..))
@@ -83,8 +85,12 @@ instance Read RGB8 where
       return (RGB r g b, s)
   readsPrec _ _ = []
 
+instance Binary a => Binary (RGB a) where
+  put (RGB r g b) = put r >> put g >> put b
+  get = liftM3 RGB get get get
+
 -- | time is measured in centiseconds
-newtype Delay = Delay (FixedPrec Word16 E2) deriving (Bounded, Eq, Ord, Enum, Num, Real, Fractional, RealFrac)
+newtype Delay = Delay (FixedPrec Word16 E2) deriving (Bounded, Eq, Ord, Enum, Num, Real, Fractional, RealFrac, Binary, Typeable)
 
 delayCentiseconds :: Delay -> Word16
 delayCentiseconds (Delay (MkFixedPrec i)) = i
@@ -100,7 +106,7 @@ instance Read Delay where
 
 
 -- | positions are counted 0-11 on mk1, 0-31 on mk2
-newtype PatternStep = PatternStep { patternStep :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read, Typeable)
+newtype PatternStep = PatternStep { patternStep :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read, Binary, Typeable)
 
 instance Bounded PatternStep where
   minBound = PatternStep 0
@@ -135,7 +141,7 @@ instance Bounded EEPROMAddr where
   maxBound = EEPatternStart
 
 -- | LEDs are 1-based (0 means "all")
-newtype LED = LED { whichLED :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read, Typeable)
+newtype LED = LED { whichLED :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read, Binary, Typeable)
 
 instance Bounded LED where
   minBound = LED 1
