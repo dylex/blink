@@ -10,6 +10,7 @@ module Blinker
 import Control.Applicative ((<$>), (<$))
 import Control.Exception (Exception, catch, throwTo, finally)
 import Control.Monad (ap)
+import qualified Data.IntMap.Strict as Map
 import Data.Monoid (mconcat)
 import Data.Typeable (Typeable, cast)
 import qualified Data.Foldable (foldr)
@@ -18,7 +19,7 @@ import System.Hardware.Blink1.Class (Blink1)
 import System.Hardware.Blink1.Types (LED)
 
 import Util
-import Keys
+import Key
 import Time
 import Segment
 import Activity
@@ -48,10 +49,10 @@ instance Activity Act where
   segment (Act a) = segment a
   active (Act a) = active a
 
-type Acts = KeyMap Act
+type Acts = Map.IntMap Act
 
 updateActs :: Update -> Acts -> Acts
-updateActs (Update k f) = alter (fmap Act . up) k where
+updateActs (Update k f) = Map.alter (fmap Act . up) k where
   up (Just (Act a)) = f $ cast a
   up Nothing = f Nothing
 
@@ -61,16 +62,16 @@ instance Show Update where
 instance Exception Update
 
 blinker :: Blink1 b => IO () -> b -> Maybe LED -> Unmask -> IO ()
-blinker done b w unmask = run Nothing empty `finally` done where
+blinker done b w unmask = run Nothing Map.empty `finally` done where
   run cur acts = do
-    let seg = mconcat $ map segment $ elems acts
+    let seg = mconcat $ map segment $ Map.elems acts
     t <- blink b w cur seg
     t0 <- now
     -- putStrLn (show seg ++ ", " ++ show t)
     (dt, u) <-
       ((t, Nothing) <$ unmask (threadDelay t)) `catch`
       (ap ((,) . timeInterval t0 <$> now) . return . Just)
-    run (Just $ interp seg dt) $ Data.Foldable.foldr updateActs (mapMaybe (guard1 active . shift dt) acts) u
+    run (Just $ interp seg dt) $ Data.Foldable.foldr updateActs (Map.mapMaybe (guard1 active . shift dt) acts) u
 
 startBlinker :: Blink1 b => IO () -> b -> Maybe LED -> IO Blinker
 startBlinker done b = forkMasked Blinker . blinker done b

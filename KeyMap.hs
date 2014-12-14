@@ -1,8 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Keys
-  ( Key
-  , newKey
-  , KeyMap
+module KeyMap
+  ( KeyMap
   , empty
   , clean
   , alter
@@ -11,8 +9,7 @@ module Keys
   ) where
 
 import Control.Applicative ((<$>), (<$))
-import Control.Monad (join, (<=<))
-import Data.IORef (IORef, newIORef, atomicModifyIORef')
+import Control.Monad ((<=<))
 import qualified Data.IntMap.Strict as Map
 import qualified Data.Maybe (mapMaybe)
 import qualified Data.Traversable (mapM)
@@ -20,14 +17,9 @@ import Data.Typeable (Typeable)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Mem.Weak (Weak, mkWeakPair, deRefWeak)
 
-data Key = Key { _unKey :: Int } deriving (Eq, Ord, Typeable, Show)
+import qualified Key as K
 
-{-# NOINLINE keySource #-}
-keySource :: IORef Int
-keySource = unsafePerformIO (newIORef minBound)
-
-newKey :: IO Key
-newKey = Key <$> atomicModifyIORef' keySource (join (,) . succ)
+data Key = Key { _unKey :: K.Key } deriving (Eq, Ord, Show, Typeable)
 
 type Elem a = Weak (Key, a)
 

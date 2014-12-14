@@ -6,11 +6,12 @@ import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO)
 import Control.Exception (bracket)
 import Control.Monad (void)
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), mempty)
 import System.Directory (getDirectoryContents)
 import qualified System.Linux.Inotify as Inotify
 
 import Util
+import Key
 import State
 import Server
 
@@ -31,9 +32,10 @@ maskOld = Inotify.in_DELETE <> Inotify.in_MOVED_FROM
 
 mail :: Server -> IO ()
 mail server = bracket Inotify.init Inotify.close $ \inotify -> do
+  sk <- newKey
   wd <- Inotify.addWatch inotify dir (maskOld <> maskNew)
   let run n = do
-        updateServer server $ \s -> s{ stateMail = n }
+        updateServer server sk mempty{ stateMail = n }
         ev <- Inotify.getEvent inotify
         let mf m = Inotify.wd ev == wd && Inotify.hasOverlap (Inotify.mask ev) m
             g = guardEndo . mf

@@ -5,38 +5,43 @@ module Server
   ) where
 
 import Control.Concurrent (forkIO, threadWaitWrite)
-import Control.Concurrent.MVar (MVar, newEmptyMVar, tryTakeMVar, tryPutMVar, readMVar)
+import Control.Concurrent.MVar (MVar, newMVar, newEmptyMVar, tryTakeMVar, tryPutMVar, readMVar, modifyMVar_)
 import Control.Exception (bracket)
 import Control.Monad (void, forever, when)
 import Data.Binary (encode)
+import qualified Data.ByteString.Lazy as BS (ByteString, empty)
 import qualified Data.Foldable (mapM_)
-import Data.IORef (IORef, newIORef, readIORef, atomicModifyIORef')
-import Data.Monoid (mempty)
+import qualified Data.IntMap.Lazy as Map
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.Maybe (fromMaybe)
+import Data.Monoid (mempty, mconcat)
 import qualified Network.Socket as Net
 import qualified Network.Socket.ByteString.Lazy as Net.BS
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error (catchIOError)
 import System.Posix.Types (Fd(Fd))
 
+import Key
 import State
 import Loadavg
 import Purple
 
 data Server = Server
-  { serverState :: !(IORef State)
-  , serverSync :: !(MVar ())
+  { serverStates :: !(MVar (Map.IntMap State))
+  , serverState :: !(IORef BS.ByteString)
+  , serverTrigger :: !(MVar ())
   , serverLoadavg :: !Loadavg
   , serverPurple :: Purple
   }
 
 serve :: Server -> Net.Socket -> IO ()
-serve Server{ serverState = v, serverSync = r } sock = do
+serve Server{ serverState = v, serverTrigger = t } sock = do
   Net.shutdown sock Net.ShutdownReceive
   let run = do
         threadWaitWrite (Fd (Net.fdSocket sock))
-        _ <- tryTakeMVar r
+        _ <- tryTakeMVar t
         _ <- Net.BS.sendAll sock . encode =<< readIORef v
-        readMVar r
+        readMVar t
         run
   run
 
@@ -53,26 +58,30 @@ server s port = do
 
 startServer :: Loadavg -> Purple -> Maybe Net.PortNumber -> IO Server
 startServer loadavg purple port = do
-  v <- newIORef mempty
+  m <- newMVar Map.empty
+  v <- newIORef BS.empty
   r <- newEmptyMVar
   let s = Server
-        { serverState = v
-        , serverSync  = r
+        { serverStates = m
+        , serverState = v
+        , serverTrigger = r
         , serverLoadavg = loadavg
         , serverPurple = purple
         }
   Data.Foldable.mapM_ (forkIO . server s) port
   return s
 
-updateServer :: Server -> (State -> State) -> IO ()
-updateServer s@Server{ serverState = vr, serverSync = r } m = do
-  (v', v) <- atomicModifyIORef' vr $ \v' ->
-    let v = m v' in (v, (v', v))
+updateServer :: Server -> Key -> State -> IO ()
+updateServer srv k v = modifyMVar_ (serverStates srv) $ \m -> do
+  let (vo, m')
+        | v == mempty = Map.updateLookupWithKey (\_ _ -> Nothing) k m
+        | otherwise = Map.insertLookupWithKey (\_ _ _ -> v) k v m
+      v' = fromMaybe mempty vo
+      s = mconcat $ Map.elems m'
   when (v' /= v) $ do
-  let lc' = loadavgColor v'
-      lc = loadavgColor v
-      p' = statePurple v'
-      p = statePurple v
-  when (lc' /= lc) $ setLoadavgColor (serverLoadavg s) lc
-  when (p' /= p) $ updatePurple (serverPurple s) p
-  void $ tryPutMVar r ()
+    when (loadavgColor v' /= loadavgColor v) $
+      setLoadavgColor (serverLoadavg srv) (loadavgColor s)
+    when (statePurple v' /= statePurple v) $
+      updatePurple (serverPurple srv) (statePurple s)
+    writeIORef (serverState srv) (encode s) >>= void . tryPutMVar (serverTrigger srv)
+  return m'

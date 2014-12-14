@@ -1,7 +1,6 @@
 module State
   ( State(..)
   , loadavgColor
-  , stateUpdate
   , decodeState
   ) where
 
@@ -31,21 +30,9 @@ loadavgColor = color . stateMail where
 (|+|) x (-1) = x
 (|+|) x y = x + y
 
-(|-|) :: Int -> Int -> Int
-(|-|) (-1) (-1) = -1
-(|-|) (-1) _ = error "-1 |-| x"
-(|-|) x (-1) = x
-(|-|) x y = x - y
-
 instance Monoid State where
   mempty = State (-1) (-1)
   mappend (State m1 p1) (State m2 p2) = State (m1 |+| m2) (p1 |+| p2)
-
-stateRemove :: State -> State -> State
-stateRemove (State m0 p0) (State m1 p1) = State (m1 |-| m0) (p1 |-| p0)
-
-stateUpdate :: State -> State -> State -> State
-stateUpdate old new cur = stateRemove old cur <> new
 
 mailBit :: Int
 mailBit = 7 -- pred $ finiteBitSize (0 :: Word8)

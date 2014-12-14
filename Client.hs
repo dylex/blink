@@ -3,7 +3,7 @@ module Client
   ) where
 
 import Control.Concurrent (forkIO)
-import Control.Exception (bracket)
+import Control.Exception (bracket, finally)
 import Control.Monad (void, forever, when)
 import qualified Data.ByteString as BS
 import Data.Monoid (mempty)
@@ -12,31 +12,30 @@ import qualified Network.Socket.ByteString as Net.BS
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error (mkIOError, eofErrorType, catchIOError)
 
+import Key
 import Time
 import State
 import Server
 
-connect :: Server -> Net.SockAddr -> IO ()
-connect server addr =
+connect :: Server -> Key -> Net.SockAddr -> IO ()
+connect server sk addr =
   bracket (Net.socket Net.AF_INET Net.Stream Net.defaultProtocol) Net.close $ \sock -> do
     Net.connect sock addr
     -- Net.shutdown sock Net.ShutdownSend
-    let run o = do
-          r <- Net.BS.recv sock 60
-          when (BS.null r) $ ioError $ mkIOError eofErrorType "recv" Nothing Nothing
-          let s = decodeState (BS.last r)
-          -- print s
-          updateServer server (stateUpdate o s)
-          run s
-    run mempty
+    flip finally (update mempty) $ forever $ do
+      r <- Net.BS.recv sock 60
+      when (BS.null r) $ ioError $ mkIOError eofErrorType "recv" Nothing Nothing
+      update $ decodeState (BS.last r)
+  where update = updateServer server sk
 
 client :: Server -> Net.PortNumber -> IO ()
 client server port = do
   localhost <- Net.inet_addr "127.0.0.1" -- INADDR_LOOPBACK
   let addr = Net.SockAddrInet port localhost
+  sk <- newKey
 
   forever $ do
-    connect server addr `catchIOError` \e -> hPutStrLn stderr ("client: " ++ show e)
+    connect server sk addr `catchIOError` \e -> hPutStrLn stderr ("client: " ++ show e)
     threadDelay 300
 
 startClient :: Server -> Net.PortNumber -> IO ()
