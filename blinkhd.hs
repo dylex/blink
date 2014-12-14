@@ -23,6 +23,7 @@ import Loadavg
 import Mail
 import Pinger
 import Purple
+import Command
 import Server
 import Client
 
@@ -33,6 +34,7 @@ data Options = Options
   , optLEDs :: Maybe Int
   , optListen :: Maybe PortNumber
   , optConnect :: Maybe PortNumber
+  , optCommand :: Maybe FilePath
   } 
 
 defaultOptions :: Options
@@ -41,6 +43,7 @@ defaultOptions = Options
   , optLEDs = Nothing
   , optListen = Just 16652
   , optConnect = Just 6652
+  , optCommand = Just "/tmp/.blink.ctl"
   }
 
 options :: [Opt.OptDescr (Options -> Options)]
@@ -51,16 +54,20 @@ options =
   , Opt.Option "n" ["dummy"]
       (Opt.NoArg (\o -> o{ optDevice = return (Blink1Dev (openDummy True)) }))
       "use dummy (debugging) blink(1) device"
-  , Opt.Option "L" ["leds"]
+  , Opt.Option "l" ["leds"]
       (Opt.ReqArg (\l o -> o{ optLEDs = Just (read l) }) "COUNT")
       "set the number of addressable LEDs"
-  , Opt.Option "l" ["listen"]
+  , Opt.Option "L" ["listen"]
       (Opt.OptArg (\p o -> o{ optListen = fmap (toEnum . read) p }) "PORT")
-      ("(don't) listen on localhost:PORT serving events" ++ maybe "" ((" [" ++) . (++ "]") . show) (optListen defaultOptions))
-  , Opt.Option "c" ["connect"]
+      ("(don't) listen on localhost:PORT serving events" ++ def (fmap show . optListen))
+  , Opt.Option "C" ["connect"]
       (Opt.OptArg (\p o -> o{ optConnect = fmap (toEnum . read) p }) "PORT")
-      ("(don't) connect to localhost:PORT for events" ++ maybe "" ((" [" ++) . (++ "]") . show) (optConnect defaultOptions))
-  ]
+      ("(don't) connect to localhost:PORT for events" ++ def (fmap show . optConnect))
+  , Opt.Option "S" ["socket"]
+      (Opt.OptArg (\s o -> o{ optCommand = s }) "PATH")
+      ("(don't) listen on socket PATH for commands" ++ def optCommand)
+  ] where
+  def f = maybe "" ((" [" ++) . (++ "]")) (f defaultOptions)
 
 usage :: String
 usage = Opt.usageInfo "Usage: blinkd [OPTION...]" options
@@ -103,6 +110,7 @@ main = do
   server <- startServer loadavg purple (optListen opts)
   startMail server
   startPinger led1
+  Data.Foldable.mapM_ (startCommand bs) (optCommand opts)
   Data.Foldable.mapM_ (startClient server) (optConnect opts)
 
   takeMVar wait
