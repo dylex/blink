@@ -96,10 +96,10 @@ delayCentiseconds :: Delay -> Word16
 delayCentiseconds (Delay (MkFixedPrec i)) = i
 
 instance Show Delay where
-  showsPrec p d = showsPrec p d . showChar 's'
+  showsPrec p (Delay d) = showsPrec p d . showChar 's'
 instance Read Delay where
   readsPrec p = map f . readsPrec p where
-    f (x,'s':s) = (realToFrac x, s)
+    f (x,'s':s) = (realToFrac (x :: Centi), s)
     f (x,'c':'s':s) = (Delay (MkFixedPrec (floor x)), s)
     f (x,'m':'s':s) = (Delay (MkFixedPrec (floor x `div` 10)), s)
     f (x,s) = (realToFrac (x :: Centi), s)
