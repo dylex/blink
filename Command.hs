@@ -35,11 +35,14 @@ instance Binary Command where
   get = liftM3 CmdSequence get get get
 
 loop :: Int -> [a] -> [a]
+loop _ [] = []
 loop 0 _ = []
-loop n l = l ++ loop (pred n) l
+loop n l
+  | n < 0 = cycle l
+  | otherwise = l ++ loop (pred n) l
 
 activity :: Command -> Sequence
-activity (CmdSequence _ n s) = Sequence $ (if n < 0 then cycle else loop n) $ map fromSegment1 s
+activity (CmdSequence _ n s) = Sequence $ loop n $ map fromSegment1 s
 
 mapUnsafeInterleaveIO :: (a -> IO b) -> [a] -> IO [b]
 mapUnsafeInterleaveIO _ [] = return []

@@ -103,7 +103,7 @@ data Segment1
     { seg1Color :: !RGB8
     , seg1Delay :: !Delay
     , seg1End :: !RGB8
-    }
+    } deriving (Eq, Show)
 
 toSegment1 :: Segment -> Segment1
 toSegment1 (Segment s l e)
