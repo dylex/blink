@@ -6,7 +6,7 @@ module Command
 import Control.Applicative ((<$))
 import Control.Concurrent (forkIO)
 import Control.Exception (bracket)
-import Control.Monad (liftM3, forever, void)
+import Control.Monad (liftM2, liftM3, forever, void)
 import Data.Binary (Binary(..), decodeOrFail)
 import qualified Data.ByteString.Lazy as BS (null)
 import qualified Data.Foldable (mapM_)
@@ -15,8 +15,9 @@ import qualified Network.Socket.ByteString.Lazy as Net.BS
 import System.IO (hPutStrLn, stderr)
 import System.Posix.Files (removeLink, setFileCreationMask)
 import System.Posix.Types (CMode(..))
+import System.IO.Unsafe (unsafeInterleaveIO)
 
-import System.Hardware.Blink1.Types (LED(..))
+import System.Hardware.Blink1.Types (LED)
 
 import Segment
 import Activity
@@ -40,10 +41,15 @@ loop n l = l ++ loop (pred n) l
 activity :: Command -> Sequence
 activity (CmdSequence _ n s) = Sequence $ (if n < 0 then cycle else loop n) $ map fromSegment1 s
 
+mapUnsafeInterleaveIO :: (a -> IO b) -> [a] -> IO [b]
+mapUnsafeInterleaveIO _ [] = return []
+mapUnsafeInterleaveIO f (x:l) = unsafeInterleaveIO $ 
+  liftM2 (:) (f x) $ mapUnsafeInterleaveIO f l
+
 server :: [Blinker] -> FilePath -> IO ()
 server leds path =
   bracket (Net.socket Net.AF_UNIX Net.Datagram Net.defaultProtocol) Net.close $ \sock -> do
-    ks <- mapM newActKey leds
+    ks <- mapUnsafeInterleaveIO newActKey leds
     removeLink path
     bracket (setFileCreationMask (CMode 0o177)) setFileCreationMask $ \_ ->
       Net.bind sock addr
@@ -55,7 +61,7 @@ server leds path =
           | n >= 0 = return $ Just x
         k _ _ = Nothing <$ err "invalid LED"
       command cmd = do
-        mk <- key (whichLED $ cmdWhich cmd)
+        mk <- key (fromEnum $ cmdWhich cmd)
         Data.Foldable.mapM_ (\k -> updateAct k (const $ Just act)) mk
         where act = activity cmd
       msg (Left (_, _, e)) = err e

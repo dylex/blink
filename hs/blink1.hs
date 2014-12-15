@@ -3,9 +3,9 @@
 import Control.Applicative ((<$), (<|>))
 import Control.Monad (foldM)
 import Data.Maybe (fromMaybe)
+import qualified System.Console.GetOpt as Opt
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
-import qualified System.Console.GetOpt as Opt
 
 import System.Hardware.Blink1
 import System.Hardware.Blink1.Class (Blink1)

@@ -7,10 +7,10 @@ import Control.Monad (unless)
 import qualified Data.Foldable (mapM_)
 import Data.List (foldl')
 import Network.Socket (PortNumber)
+import qualified System.Console.GetOpt as Opt
 import System.Directory (setCurrentDirectory, getHomeDirectory)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
-import qualified System.Console.GetOpt as Opt
 
 import System.Hardware.Blink1.Types (LED(..))
 import System.Hardware.Blink1.Class (Blink1)
@@ -70,7 +70,7 @@ options =
   def f = maybe "" ((" [" ++) . (++ "]")) (f defaultOptions)
 
 usage :: String
-usage = Opt.usageInfo "Usage: blinkd [OPTION...]" options
+usage = Opt.usageInfo "Usage: blinkhd [OPTION...]" options
 
 main :: IO ()
 main = do

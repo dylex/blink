@@ -4,7 +4,7 @@ LDFLAGS=-g -lm
 BINDIR=/usr/bin
 
 FILES=blinkd mail loadavg pinger purple command remote activity notify watch blink1
-PROGS=blinkd blink blinkhd
+PROGS=blinkd blink blinkhd blinkh
 
 default: $(PROGS)
 
