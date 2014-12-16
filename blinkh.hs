@@ -1,7 +1,7 @@
 
 import Control.Applicative ((<$>))
 import Control.Exception (bracket)
-import Control.Monad (liftM3, unless)
+import Control.Monad (unless)
 import Data.Binary (encode)
 import qualified Data.ByteString.Lazy as BS (length)
 import Data.List (foldl')
@@ -57,6 +57,13 @@ usage = Opt.usageInfo "Usage: blinkh [OPTIONS] SEQUENCE\n\
   \  COLOR               [#]RGB or [#]RRGGBB hex triplet\n\
   \  LEN                 SECONDS[s], 100cs, or 1000ms\n" options
 
+splitBy :: (a -> Bool) -> [a] -> [[a]]
+splitBy _ [] = []
+splitBy f s = h:splitBy f (tl r) where
+  (h,r) = break f s
+  tl [] = []
+  tl (_:l) = l
+
 type Parse = Either String
 type Parser a = String -> Parse a
 
@@ -70,24 +77,30 @@ parser :: Read a => String -> Parser a
 parser t s = maybe (Left ("invalid " ++ t ++ ": " ++ s)) Right $ readMaybe s
 
 parseArgs :: [String] -> Either String (Options -> Options)
-parseArgs args = set <$> run black (map words $ split $ unwords args) where
+parseArgs args = set <$> seg black (map words $ splitBy (`elem` ",;\n") $ unwords args) where
   set r = optCommand' (\c -> c{ cmdSequence = cmdSequence c ++ r })
+  
+  seg _ [] = return []
+  seg p [[]] = return [Segment1Solid p]
+  seg p [[a]] = return . either Segment1Solid (solid p) <$> colorOrLen a
+  seg _ ([]:_) = fail "empty segment"
+  seg p (s:l) = start p s l
 
-  run :: RGB8 -> [[String]] -> Parse [Segment1]
-  run _ [] = return []
-  run p [[]] = return [Segment1Solid p]
-  run p [[a]] = return . either Segment1Solid (solid p) <$> colorOrLen a
-  run p (s:l) = do
-    f <- seg p s
-    (f :) <$> run (seg1End f) l
-  seg :: RGB8 -> [String] -> Parse Segment1
-  seg p [l] = solid p <$> len l
-  seg p [a1,a2] = either 
-    (\c -> solid c <$> len a2)
-    (\l -> Segment1Fade p l <$> color a2)
-    =<< colorOrLen a1
-  seg _ [s,l,e] = liftM3 Segment1Fade (color s) (len l) (color e)
-  seg _ s = fail $ "invalid segment: " ++ unwords s
+  start p (a:s) r = either
+    (\c -> mid c s r)
+    (\l -> end p l s r)
+    =<< colorOrLen a
+  start p [] r = seg p r
+  mid c (a:s) r = do
+    l <- len a
+    end c l s r
+  mid _ [] _ = fail "invalid segment: length expected"
+  end c l [] r = add (solid c l) [] r
+  end c l (a:s) r = do
+    e <- color a
+    add (Segment1Fade c l e) s r
+  add s l r = (s :) <$> start (seg1End s) l r
+
   solid p l = Segment1Fade p l p
   color :: Parser RGB8
   color s@('#':_) = parser "color" s
@@ -96,13 +109,6 @@ parseArgs args = set <$> run black (map words $ split $ unwords args) where
   len = parser "delay"
   colorOrLen :: Parser (Either RGB8 Delay)
   colorOrLen a = Left <$> color a <|> Right <$> len a
-
-  split :: String -> [String]
-  split [] = []
-  split (',':l) = [] : split l
-  split (x:s) = pre (split s) where
-    pre [] = [[x]]
-    pre (h:r) = ((x:h):r)
 
 runArgs :: (o, [String], [String]) -> (o, Options -> Options, [String])
 runArgs (o, a, es) = either (\e -> (o, id, es ++ [e])) (\p -> (o, p, es)) $ parseArgs a
