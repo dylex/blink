@@ -40,7 +40,7 @@ serve Server{ serverState = v, serverTrigger = t } sock = do
   let run = do
         threadWaitWrite (Fd (Net.fdSocket sock))
         _ <- tryTakeMVar t
-        _ <- Net.BS.sendAll sock . encode =<< readIORef v
+        _ <- Net.BS.sendAll sock =<< readIORef v
         readMVar t
         run
   run
