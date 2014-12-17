@@ -6,7 +6,7 @@ module Command
 import Control.Applicative ((<$))
 import Control.Concurrent (forkIO)
 import Control.Exception (bracket)
-import Control.Monad (liftM2, liftM3, forever, void)
+import Control.Monad (liftM2, liftM3, forever, void, unless)
 import Data.Binary (Binary(..), decodeOrFail)
 import qualified Data.ByteString.Lazy as BS (null)
 import qualified Data.Foldable (mapM_)
@@ -15,6 +15,7 @@ import qualified Network.Socket.ByteString.Lazy as Net.BS
 import System.IO (hPutStrLn, stderr)
 import System.Posix.Files (removeLink, setFileCreationMask)
 import System.Posix.Types (CMode(..))
+import System.IO.Error (catchIOError, isDoesNotExistErrorType, ioeGetErrorType)
 import System.IO.Unsafe (unsafeInterleaveIO)
 
 import System.Hardware.Blink1.Types (LED)
@@ -53,7 +54,8 @@ server :: [Blinker] -> FilePath -> IO ()
 server leds path =
   bracket (Net.socket Net.AF_UNIX Net.Datagram Net.defaultProtocol) Net.close $ \sock -> do
     ks <- mapUnsafeInterleaveIO newActKey leds
-    removeLink path
+    removeLink path `catchIOError` \e ->
+      unless (isDoesNotExistErrorType (ioeGetErrorType e)) (ioError e)
     bracket (setFileCreationMask (CMode 0o177)) setFileCreationMask $ \_ ->
       Net.bind sock addr
     let 

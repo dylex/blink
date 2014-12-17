@@ -12,11 +12,11 @@ import System.Directory (setCurrentDirectory, getHomeDirectory)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 
-import System.Hardware.Blink1.Types (LED(..))
+import System.Hardware.Blink1.Types (black, LED(..))
 import System.Hardware.Blink1.Class (Blink1)
 import System.Hardware.Blink1.Dummy (openDummy)
 import System.Hardware.Blink1.Linux (openRawHID, openRawDev)
-import System.Hardware.Blink1 (closeBlink1, getVersion)
+import System.Hardware.Blink1 (closeBlink1, getVersion, setColor)
 
 import Blinker
 import Loadavg
@@ -52,8 +52,8 @@ options =
       (Opt.ReqArg (\f o -> o{ optDevice = Blink1Dev <$> openRawDev f }) "DEV")
       "use blink(1) hidraw device [auto]"
   , Opt.Option "n" ["dummy"]
-      (Opt.NoArg (\o -> o{ optDevice = return (Blink1Dev (openDummy True)) }))
-      "use dummy (debugging) blink(1) device"
+      (Opt.NoArg (\o -> o{ optDevice = return (Blink1Dev (openDummy True)), optListen = Nothing, optConnect = Nothing, optCommand = Nothing }))
+      "use dummy (debugging) blink(1) device (implies -L -C -S)"
   , Opt.Option "l" ["leds"]
       (Opt.ReqArg (\l o -> o{ optLEDs = Just (read l) }) "COUNT")
       "set the number of addressable LEDs"
@@ -87,6 +87,7 @@ main = do
     fail "cannot listen and connect on same port"
 
   bracket (optDevice opts) (\(Blink1Dev b) -> closeBlink1 b) $ \(Blink1Dev b) -> do
+  setColor b black
 
   leds <-
     let
@@ -103,13 +104,13 @@ main = do
 
   bs <- mapM (startBlinker done b) (maybe [Nothing] (map Just . enumFromTo minBound) leds)
   
-  let led1:_:_ = cycle bs
+  let led1:led2:_ = cycle bs
 
   loadavg <- startLoadavg led1
   purple <- initPurple led1
   server <- startServer loadavg purple (optListen opts)
   startMail server
-  startPinger led1
+  startPinger led2
   Data.Foldable.mapM_ (startCommand bs) (optCommand opts)
   Data.Foldable.mapM_ (startClient server) (optConnect opts)
 

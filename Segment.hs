@@ -6,22 +6,19 @@ module Segment
   , fromRGB, toRGB
   , Segment(..)
   , solid
+  , trunc
   , interp
-  , blink
   , Segment1(..)
   , fromSegment1, toSegment1
   ) where
 
 import Control.Arrow (first)
-import Control.Monad (when, liftM, liftM3)
+import Control.Monad (liftM, liftM3)
 import Data.Binary (Binary(..), putWord8, getWord8)
-import qualified Data.Foldable (all)
 import Data.Monoid
 import Data.Typeable (Typeable)
 
-import System.Hardware.Blink1.Types (RGB(..), black, RGB8, LED, Delay)
-import System.Hardware.Blink1.Class (Blink1)
-import System.Hardware.Blink1 (setColor2, fadeToColor2)
+import System.Hardware.Blink1.Types (RGB(..), black, RGB8, Delay)
 
 import Time
 
@@ -82,19 +79,6 @@ instance Monoid Segment where
 instance Binary Segment where
   put (Segment s l e) = put s >> put l >> put e
   get = liftM3 Segment get get get
-
-blink :: Blink1 b => b -> Maybe LED -> Maybe Color -> Segment -> IO Interval
-blink b w cur f@(Segment s l e) | l < 0 = fail ("invalid segment delay: " ++ show l)
-  | otherwise = do
-  let s8 = toRGB s
-  when (Data.Foldable.all ((/=) s8 . toRGB) cur) $ setColor2 b w s8
-  if isInfinite l || toRGB e == s8
-    then return l
-    else do
-      let Segment _ l' e' = trunc maxDelay f
-          e8' = toRGB e'
-      when (e8' /= s8) $ fadeToColor2 b w (toDelay l') e8'
-      return l'
 
 data Segment1
   = Segment1Solid
