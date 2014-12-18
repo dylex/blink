@@ -44,6 +44,10 @@ instance Num a => Num (RGB a) where
   abs = fmap abs
   signum = fmap signum
   fromInteger = pure . fromInteger
+instance Fractional a => Fractional (RGB a) where
+  (/) = liftA2 (/)
+  recip = fmap recip
+  fromRational = pure . fromRational
 
 black :: Num a => RGB a
 black = 0

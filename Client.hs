@@ -22,10 +22,14 @@ connect server sk addr =
   bracket (Net.socket Net.AF_INET Net.Stream Net.defaultProtocol) Net.close $ \sock -> do
     Net.connect sock addr
     -- Net.shutdown sock Net.ShutdownSend
-    flip finally (update mempty) $ forever $ do
-      r <- Net.BS.recv sock 60
-      when (BS.null r) $ ioError $ mkIOError eofErrorType "recv" Nothing Nothing
-      update $ decodeState (BS.last r)
+    let run s = do
+          r <- Net.BS.recv sock 128
+          when (BS.null r) $ ioError $ mkIOError eofErrorType "recv" Nothing Nothing
+          let s' = BS.foldl' decodeState s r
+          print s'
+          update s'
+          run s'
+    flip finally (update mempty) $ run mempty
   where update = updateServer server sk
 
 client :: Server -> Net.PortNumber -> IO ()

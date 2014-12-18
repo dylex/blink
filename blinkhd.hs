@@ -107,7 +107,7 @@ main = do
   let led1:led2:_ = cycle bs
 
   loadavg <- startLoadavg led1
-  purple <- initPurple led1
+  purple <- initPurple led2
   server <- startServer loadavg purple (optListen opts)
   startMail server
   startPinger led2
