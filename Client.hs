@@ -26,7 +26,7 @@ connect server sk addr =
           r <- Net.BS.recv sock 128
           when (BS.null r) $ ioError $ mkIOError eofErrorType "recv" Nothing Nothing
           let s' = BS.foldl' decodeState s r
-          print s'
+          -- print s'
           update s'
           run s'
     flip finally (update mempty) $ run mempty
