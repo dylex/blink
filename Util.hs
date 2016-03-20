@@ -7,7 +7,7 @@ module Util
 
 import Control.Applicative (Alternative, pure, empty)
 import Control.Concurrent (forkIOWithUnmask, ThreadId)
-import Control.Exception (mask_)
+import Control.Exception (uninterruptibleMask_)
 
 guard1 :: Alternative f => (a -> Bool) -> a -> f a
 guard1 g x -- = x <$ guard (g x)
@@ -21,4 +21,4 @@ guardEndo True f = f
 type Unmask = forall a . IO a -> IO a
 
 forkMasked :: (ThreadId -> a) -> (Unmask -> IO ()) -> IO a
-forkMasked w = fmap w . mask_ . forkIOWithUnmask
+forkMasked w = fmap w . uninterruptibleMask_ . forkIOWithUnmask

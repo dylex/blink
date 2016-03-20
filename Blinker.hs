@@ -65,7 +65,7 @@ instance Show Update where
 instance Exception Update
 
 zeroDelay :: Interval
-zeroDelay = 1.5 * fromDelay (toEnum 1 :: Delay)
+zeroDelay = fromDelay (toEnum 1 :: Delay)
 
 blinker :: Blink1 b => IO () -> b -> Maybe LED -> Unmask -> IO ()
 blinker done b w unmask = run black Map.empty `finally` done where
@@ -80,13 +80,15 @@ blinker done b w unmask = run black Map.empty `finally` done where
     st <- case w of
       _ | s8 == cur -> return 0
       Nothing -> 0 <$ setColor2 b w s8
-      _ | l >= zeroDelay -> fadeToColor2 b w 0 s8 >> threadDelay zeroDelay
+      _ | l > zeroDelay -> fadeToColor2 b w 0 s8 >> threadDelay zeroDelay
       _ -> return 0
-    (tt, next) <- if s8 == e8 || isInfinite t then return (t, s8) else do
-      when (e8' /= s8) $ fadeToColor2 b w (toDelay (l-st)) e8'
-      return (l, e8')
+    (lt, next) <- if s8 == e8 || isInfinite t then return (t-st, s8) else do
+      wt <- if e8' /= s8
+        then fadeToColor2 b w (toDelay (l-st)) e8' >> threadDelay zeroDelay
+        else return 0
+      return (l-st-wt, e8')
     catch
-      (unmask (threadDelay (tt-st)) >> run next (shiftActs tt acts))
+      (unmask (threadDelay lt) >> run next (shiftActs lt acts))
       (\u -> do
         dt <- timeInterval t0 <$> now
         run (toRGB $ interp seg dt) $ updateActs u (shiftActs dt acts))
