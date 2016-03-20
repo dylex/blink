@@ -5,7 +5,7 @@ module Util
   , forkMasked, Unmask, ThreadId
   ) where
 
-import Control.Applicative (Alternative, pure, empty)
+import Control.Applicative (Alternative, empty)
 import Control.Concurrent (forkIOWithUnmask, ThreadId)
 import Control.Exception (uninterruptibleMask_)
 

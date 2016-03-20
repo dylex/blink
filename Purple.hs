@@ -4,7 +4,6 @@ module Purple
   , updatePurple
   ) where
 
-import Control.Applicative ((<$>))
 import Data.Bits (bit, testBit)
 import Data.List (intersperse)
 import Data.Word (Word8)

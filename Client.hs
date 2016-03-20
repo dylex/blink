@@ -6,7 +6,6 @@ import Control.Concurrent (forkIO)
 import Control.Exception (bracket, finally)
 import Control.Monad (void, forever, when)
 import qualified Data.ByteString as BS
-import Data.Monoid (mempty)
 import qualified Network.Socket as Net
 import qualified Network.Socket.ByteString as Net.BS
 import System.IO (hPutStrLn, stderr)

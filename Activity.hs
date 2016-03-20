@@ -9,9 +9,7 @@ module Activity
   ) where
 
 import qualified Data.Foldable (foldMap, any)
-import Data.Monoid
-import Data.Traversable (Traversable)
-import Data.Typeable (Typeable, Typeable1)
+import Data.Typeable (Typeable)
 
 import Time
 import Segment
@@ -21,7 +19,7 @@ class (Shiftable a, Typeable a) => Activity a where
   active :: a -> Bool
   active _ = True
 
-instance (Activity a, Traversable f, Typeable1 f) => Activity (f a) where
+instance (Activity a, Traversable f, Typeable f) => Activity (f a) where
   segment = Data.Foldable.foldMap segment
   active = Data.Foldable.any active
 

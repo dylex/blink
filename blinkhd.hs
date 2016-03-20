@@ -1,6 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
-import Control.Applicative ((<$>))
 import Control.Concurrent.MVar (newEmptyMVar, takeMVar, putMVar)
 import Control.Exception (bracket)
 import Control.Monad (unless)

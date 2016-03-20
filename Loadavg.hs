@@ -5,7 +5,6 @@ module Loadavg
   , setLoadavgColor
   ) where
 
-import Control.Applicative ((<$>), (<$))
 import Control.Exception (Exception, throwTo, catch)
 import Control.Monad (when)
 import Data.Typeable (Typeable)

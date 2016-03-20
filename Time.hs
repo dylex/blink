@@ -10,13 +10,11 @@ module Time
   , Shiftable(..)
   ) where
 
-import Control.Applicative ((<$))
 import qualified Control.Concurrent (threadDelay)
 import Control.Concurrent.MVar (newEmptyMVar, takeMVar)
 import Data.Fixed (E6)
 import Data.Fixed.Prec
 import Data.Time.Clock (UTCTime, getCurrentTime, diffUTCTime)
-import Data.Traversable (Traversable)
 
 import System.Hardware.Blink1.Types (Delay(..))
 

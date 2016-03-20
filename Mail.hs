@@ -2,11 +2,10 @@ module Mail
   ( startMail
   ) where
 
-import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO)
 import Control.Exception (bracket)
 import Control.Monad (void)
-import Data.Monoid ((<>), mempty)
+import Data.Monoid ((<>))
 import System.Directory (getDirectoryContents)
 import qualified System.Linux.Inotify as Inotify
 

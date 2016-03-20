@@ -3,7 +3,6 @@ module Command
   , startCommand
   ) where
 
-import Control.Applicative ((<$))
 import Control.Concurrent (forkIO)
 import Control.Exception (bracket)
 import Control.Monad (liftM2, liftM3, forever, void, unless)

@@ -7,11 +7,9 @@ module Blinker
   , updateAct
   ) where
 
-import Control.Applicative ((<$>), (<$))
 import Control.Exception (Exception, catch, throwTo, finally)
-import Control.Monad (when, ap)
+import Control.Monad (ap)
 import qualified Data.IntMap.Strict as Map
-import Data.Monoid (mconcat)
 import Data.Typeable (Typeable, cast)
 
 import System.Hardware.Blink1.Class (Blink1)

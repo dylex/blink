@@ -15,7 +15,6 @@ module Segment
 import Control.Arrow (first)
 import Control.Monad (liftM, liftM3)
 import Data.Binary (Binary(..), putWord8, getWord8)
-import Data.Monoid
 import Data.Typeable (Typeable)
 
 import System.Hardware.Blink1.Types (RGB(..), black, RGB8, Delay)

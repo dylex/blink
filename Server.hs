@@ -14,7 +14,6 @@ import qualified Data.Foldable (mapM_)
 import qualified Data.IntMap.Lazy as Map
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.Maybe (fromMaybe)
-import Data.Monoid (mempty, mconcat)
 import qualified Network.Socket as Net
 import qualified Network.Socket.ByteString.Lazy as Net.BS
 import System.IO (hPutStrLn, stderr)

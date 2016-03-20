@@ -5,10 +5,8 @@ module State
   , decodeState
   ) where
 
-import Control.Applicative ((<$>))
 import Data.Binary (Binary(..), putWord8, getWord8)
 import Data.Bits
-import Data.Monoid
 import Data.Word (Word8)
 
 import Segment
