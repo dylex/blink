@@ -65,7 +65,7 @@ instance Show Update where
 instance Exception Update
 
 zeroDelay :: Interval
-zeroDelay = fromDelay (toEnum 1 :: Delay)
+zeroDelay = 1.5 * fromDelay (toEnum 1 :: Delay)
 
 blinker :: Blink1 b => IO () -> b -> Maybe LED -> Unmask -> IO ()
 blinker done b w unmask = run black Map.empty `finally` done where

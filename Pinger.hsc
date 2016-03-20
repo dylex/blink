@@ -51,6 +51,7 @@ pinger blinker = bracket (openFd "/dev/ping" ReadOnly Nothing defaultFileFlags) 
   let run c = do
         threadWaitRead pd
         p <- ping pd
+        -- print p
         let c' = color p
             up :: Maybe Sequence -> Maybe Sequence
             up a = Just (Sequence [Segment (segColor $ segment a) i c', solid c'])
