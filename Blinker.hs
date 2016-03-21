@@ -7,7 +7,7 @@ module Blinker
   , updateAct
   ) where
 
-import Control.Exception (Exception, catch, throwTo, finally)
+import Control.Exception (Exception(..), catch, throwTo, finally, asyncExceptionToException, asyncExceptionFromException)
 import Control.Monad (ap)
 import qualified Data.IntMap.Strict as Map
 import Data.Typeable (Typeable, cast)
@@ -60,7 +60,9 @@ shiftActs dt = Map.mapMaybe (guard1 active . shift dt)
 instance Show Update where
   show (Update k _) = "Update " ++ (show k)
 
-instance Exception Update
+instance Exception Update where
+  toException = asyncExceptionToException
+  fromException = asyncExceptionFromException
 
 zeroDelay :: Interval
 zeroDelay = fromDelay (toEnum 1 :: Delay)

@@ -5,7 +5,7 @@ module Loadavg
   , setLoadavgColor
   ) where
 
-import Control.Exception (Exception, throwTo, catch)
+import Control.Exception (Exception(..), throwTo, catch, asyncExceptionToException, asyncExceptionFromException)
 import Control.Monad (when)
 import Data.Typeable (Typeable)
 import System.IO (withFile, IOMode(ReadMode), hGetLine, hSeek, SeekMode(AbsoluteSeek))
@@ -29,7 +29,9 @@ interval :: String -> Interval
 interval l = min 60 $ max 0.5 $ 4 / read (words l !! 1)
 
 newtype SetColor = SetColor Color deriving (Typeable, Show)
-instance Exception SetColor
+instance Exception SetColor where
+  toException = asyncExceptionToException
+  fromException = asyncExceptionFromException
 
 loadavg :: Blinker -> Unmask -> IO ()
 loadavg blinker unmask = withFile "/proc/loadavg" ReadMode $ \h -> do
