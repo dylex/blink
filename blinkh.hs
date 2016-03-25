@@ -1,5 +1,4 @@
 
-import Control.Applicative ((<$>))
 import Control.Exception (bracket)
 import Control.Monad (unless)
 import Data.Binary (encode)

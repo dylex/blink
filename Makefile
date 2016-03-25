@@ -18,6 +18,9 @@ blinkhd: Pinger.hs
 %: %.hs FORCE
 	ghc --make -Wall $@
 
+%-prof: %.hs FORCE
+	ghc --make -Wall -rtsopts -prof -fprof-auto -o $@ $<
+
 %.hs: %.hsc
 	hsc2hs $<
 

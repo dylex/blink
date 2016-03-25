@@ -8,7 +8,7 @@ module Blinker
   ) where
 
 import Control.Exception (Exception(..), catch, throwTo, finally, asyncExceptionToException, asyncExceptionFromException)
-import Control.Monad (ap)
+import Control.Monad (ap, when)
 import qualified Data.IntMap.Strict as Map
 import Data.Typeable (Typeable, cast)
 
@@ -68,30 +68,31 @@ zeroDelay :: Interval
 zeroDelay = fromDelay (toEnum 1 :: Delay)
 
 blinker :: Blink1 b => IO () -> b -> Maybe LED -> Unmask -> IO ()
-blinker done b w unmask = run black Map.empty `finally` done where
+blinker done b w unmask = run (solid black) Map.empty `finally` done where
   run cur acts = do
     let seg@(Segment s t e) = mconcat $ map segment $ Map.elems acts
-        Segment _ l e' = trunc maxDelay seg
-        s8 = toRGB s
-        e8 = toRGB e
-        e8' = toRGB e'
+        seg'@(Segment _ l e') = trunc maxDelay seg
+        s8 = toRGB s :: RGB8
+        e8 = toRGB e :: RGB8
+        e8' = toRGB e' :: RGB8
     t0 <- now
     -- print seg
-    st <- case w of
-      _ | s8 == cur -> return 0
-      Nothing -> 0 <$ setColor2 b w s8
-      _ | l > zeroDelay -> fadeToColor2 b w 0 s8 >> threadDelay zeroDelay
-      _ -> return 0
-    (lt, next) <- if s8 == e8 || isInfinite t then return (t-st, s8) else do
-      wt <- if e8' /= s8
-        then fadeToColor2 b w (toDelay (l-st)) e8' >> threadDelay zeroDelay
-        else return 0
-      return (l-st-wt, e8')
+    (c, st) <- case w of
+      _ | s8 == toRGB (segColor cur) -> return (cur, 0)
+      Nothing -> (solid s, 0) <$ setColor2 b w s8
+      _ | l >= zeroDelay -> fadeToColor2 b w 0 s8 >> (,) (solid s) <$> threadDelay zeroDelay
+      _ -> return (cur, 0)
+    (tt, next) <- if t == segInterval c && e8 == toRGB (segEnd c)
+      then return (t, c)
+      else do
+        let Segment _ cl ce' = trunc l c
+        when (cl /= l || e8' /= toRGB ce') $ fadeToColor2 b w (toDelay (l-st)) e8'
+        return (l, seg')
     catch
-      (unmask (threadDelay lt) >> run next (shiftActs lt acts))
+      (unmask (threadDelay (tt-st)) >> run next (shiftActs tt acts))
       (\u -> do
         dt <- timeInterval t0 <$> now
-        run (toRGB $ interp seg dt) $ updateActs u (shiftActs dt acts))
+        run (shift dt seg) $ updateActs u (shiftActs dt acts))
 
 startBlinker :: Blink1 b => IO () -> b -> Maybe LED -> IO Blinker
 startBlinker done b = forkMasked Blinker . blinker done b

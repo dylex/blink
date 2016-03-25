@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Segment
   ( Color
-  , RGB(..)
+  , RGB(..), RGB8
   , fromRGB, toRGB
   , Segment(..)
   , solid
