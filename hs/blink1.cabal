@@ -1,5 +1,5 @@
 Name:		blink1
-Version:	0.4.1
+Version:	0.4.2
 Author:		Dylan Simon
 Maintainer:     dylan@dylex.net
 License:        BSD3
@@ -9,7 +9,7 @@ Description:    Provides an interface to the ThingM blink(1) LED <http://thingm.
 Category:	Hardware
 Build-Type:	Simple
 Cabal-Version:	>= 1.8
-tested-with:	GHC == 7.8.3
+tested-with:	GHC == 7.8.3, GHC == 7.10.3
 
 Source-Repository head
     Type:	git

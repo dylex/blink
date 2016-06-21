@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP, RankNTypes, ExistentialQuantification #-}
 
-import Control.Applicative ((<$), (<|>))
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ((<$))
+#endif
+import Control.Applicative ((<|>))
 import Control.Monad (foldM)
 import Data.Maybe (fromMaybe)
 import qualified System.Console.GetOpt as Opt

@@ -1,4 +1,7 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances, OverlappingInstances, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances, TypeSynonymInstances, DeriveDataTypeable #-}
+#if __GLASGOW_HASKELL__ < 710
+{-# LANGUAGE OverlappingInstances #-}
+#endif
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module System.Hardware.Blink1.Types
   ( RGB(..), RGB8
@@ -11,19 +14,28 @@ module System.Hardware.Blink1.Types
   , LED(..)
   ) where
 
-import Control.Applicative (Applicative(..), liftA2)
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative (Applicative(..))
+#endif
+import Control.Applicative (liftA2)
 import Control.Monad (liftM3)
 import Data.Binary (Binary(..))
 import Data.Fixed (E2, Centi)
 import Data.Fixed.Prec
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
+#endif
 import Data.Typeable (Typeable)
 import Data.Word (Word8, Word16)
 import Numeric (showHex, readHex)
 
 data RGB a = RGB { red, green, blue :: !a } deriving (Eq, Bounded, Typeable)
 
-instance (Show a, Num a) => Show (RGB a) where
+instance
+#if __GLASGOW_HASKELL__ >= 710
+    {-# OVERLAPPABLE #-}
+#endif
+    (Show a, Num a) => Show (RGB a) where
   showsPrec p (RGB r g b) = showParen (p > 10) $
     showString "RGB "
       . showsPrec 11 r . showChar ' '
@@ -53,7 +65,7 @@ black :: Num a => RGB a
 black = 0
 
 clipAdd :: (Num a, Ord a, Bounded a) => a -> a -> a
-clipAdd x y 
+clipAdd x y
   | y > 0 && z < x = maxBound
   | y < 0 && z > x = minBound
   | z > maxBound = maxBound
@@ -74,7 +86,11 @@ showHex2 x
   | otherwise = showHex x
 
 -- |uses #RRGGBB format
-instance Show RGB8 where
+instance
+#if __GLASGOW_HASKELL__ >= 710
+    {-# OVERLAPPING #-}
+#endif
+    Show RGB8 where
   showsPrec _ (RGB r g b) = showChar '#' . showHex2 r . showHex2 g . showHex2 b
 instance Read RGB8 where
   readsPrec _ ('#':c) = rc2 c ++ rc1 c where
@@ -129,14 +145,14 @@ serialNumLen = 4
 instance Enum EEPROMAddr where
   fromEnum EEOSCCAL = 0
   fromEnum EEBootMode = 1
-  fromEnum (EESerialNum i) 
+  fromEnum (EESerialNum i)
     | i < serialNumLen = 2 + fromIntegral i
     | otherwise = error "EEPROMAddr.fromEnum: invalid EESerialNum"
   fromEnum EEPatternStart = 6
   toEnum 0 = EEOSCCAL
   toEnum 1 = EEBootMode
   toEnum 6 = EEPatternStart
-  toEnum x 
+  toEnum x
     | x >= 2 && x < 6 = EESerialNum (fromIntegral x-2)
     | otherwise = error "EEPROMAddr.toEnum: invalid address"
 

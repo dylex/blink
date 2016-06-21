@@ -9,7 +9,9 @@ module Data.Fixed.Prec
   , fixedFromPrec
   ) where
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
+#endif
 import Control.Arrow ((***), first)
 import Data.Binary (Binary(..))
 import Data.Fixed
