@@ -39,6 +39,7 @@ import Control.Concurrent (threadDelay)
 import Control.Monad (liftM)
 import Data.Bits (shiftR, shiftL, (.|.))
 import Data.Char (chr, ord)
+import Data.Fixed.Prec (FixedPrec(..))
 import Data.List (foldl')
 import Data.Word
 import System.Hardware.Blink1.Class
@@ -141,7 +142,7 @@ setPattern b p (Fade c d) = command b 'P' $ rgb c ++ delay d ++ [pos p]
 getPattern :: Blink1 b => b -> PatternStep -> IO Fade8
 getPattern dev p = do
   _:r:g:b:d1:d2:_ <- request dev 'R' $ rgb black ++ delay 0 ++ [pos p]
-  return $ Fade (RGB r g b) (fi (i d1 `shiftL` 8 .|. i d2) / 100)
+  return $ Fade (RGB r g b) (Delay $ MkFixedPrec $ i d1 `shiftL` 8 .|. i d2)
   where i = fi :: Word8 -> Word16
 
 savePatterns2 :: Blink1 b => b -> IO ()
