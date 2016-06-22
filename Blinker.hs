@@ -13,7 +13,7 @@ import qualified Data.IntMap.Strict as Map
 import Data.Typeable (Typeable, cast)
 
 import System.Hardware.Blink1.Class (Blink1)
-import System.Hardware.Blink1.Types (black, LED, Delay)
+import System.Hardware.Blink1.Types (black, LED, Delay, Fade(..))
 import System.Hardware.Blink1 (setColor2, fadeToColor2)
 
 import Util
@@ -80,13 +80,13 @@ blinker done b w unmask = run (solid black) Map.empty `finally` done where
     (c, st) <- case w of
       _ | s8 == toRGB (segColor cur) -> return (cur, 0)
       Nothing -> (solid s, 0) <$ setColor2 b w s8
-      _ | l >= zeroDelay -> fadeToColor2 b w 0 s8 >> (,) (solid s) <$> threadDelay zeroDelay
+      _ | l >= zeroDelay -> fadeToColor2 b w (Fade s8 0) >> (,) (solid s) <$> threadDelay zeroDelay
       _ -> return (cur, 0)
     (tt, next) <- if t == segInterval c && e8 == toRGB (segEnd c)
       then return (t, c)
       else do
         let Segment _ cl ce' = trunc l c
-        when (cl /= l || e8' /= toRGB ce') $ fadeToColor2 b w (toDelay (l-st)) e8'
+        when (cl /= l || e8' /= toRGB ce') $ fadeToColor2 b w (Fade e8' (toDelay (l-st)))
         return (l, seg')
     catch
       (unmask (threadDelay (tt-st)) >> run next (shiftActs tt acts))
