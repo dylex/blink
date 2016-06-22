@@ -8,6 +8,7 @@ module System.Hardware.Blink1.Types
   , black
   , Delay(..)
   , delayCentiseconds
+  , Fade(..), Fade8
   , PatternStep(..)
   , EEPROMAddr(..)
   , serialNumLen
@@ -18,6 +19,7 @@ module System.Hardware.Blink1.Types
 import Control.Applicative (Applicative(..))
 #endif
 import Control.Applicative (liftA2)
+import Control.Arrow (first)
 import Control.Monad (liftM3)
 import Data.Binary (Binary(..))
 import Data.Fixed (E2, Centi)
@@ -124,6 +126,16 @@ instance Read Delay where
     f (x,'m':'s':s) = (Delay (MkFixedPrec (floor x `div` 10)), s)
     f (x,s) = (realToFrac (x :: Centi), s)
 
+data Fade a = Fade { fadeRGB :: !(RGB a), fadeDelay :: !Delay } deriving (Eq, Typeable)
+type Fade8 = Fade Word8
+
+instance Show Fade8 where
+  showsPrec p (Fade c d) = showsPrec p c . showChar '@' . showsPrec p d
+instance Read Fade8 where
+  readsPrec p = concatMap rd . readsPrec p where
+    rd (c,"") = [(Fade c 0, "")]
+    rd (c,'@':s) = first (Fade c) <$> readsPrec p s
+    rd _ = []
 
 -- | positions are counted 0-11 on mk1, 0-31 on mk2
 newtype PatternStep = PatternStep { patternStep :: Word8 } deriving (Eq, Ord, Enum, Num, Show, Read, Binary, Typeable)

@@ -1,11 +1,12 @@
-{-# LANGUAGE CPP, RankNTypes, ExistentialQuantification #-}
+{-# LANGUAGE CPP, RankNTypes, ExistentialQuantification, TupleSections #-}
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$))
 #endif
 import Control.Applicative ((<|>))
-import Control.Monad (foldM)
-import Data.Maybe (fromMaybe)
+import Control.Arrow ((***))
+import Control.Monad (guard, foldM)
+import Data.Maybe (fromMaybe, isNothing)
 import qualified System.Console.GetOpt as Opt
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
@@ -21,24 +22,24 @@ import System.Hardware.Blink1.USB (openUSB)
 #endif
 
 data State = forall b . Blink1 b => State 
-  { _dev :: Maybe b
+  { dev :: Maybe b
   , led :: Maybe LED
-  , time :: Delay
+  , patternStep :: Maybe PatternStep
   }
 
 noDev :: Maybe Blink1Dummy
 noDev = Nothing
 
 withDev :: State -> (forall b . Blink1 b => b -> a) -> a
-withDev (State Nothing _ _) _ = error "No device opened"
-withDev (State (Just d) _ _) f = f d
+withDev State{ dev = Nothing } _ = error "No device opened"
+withDev State{ dev = Just d } f = f d
 
 opening :: Blink1 b => IO b -> State -> IO State
-opening o (State Nothing l t) = o >>= \b -> return (State (Just b) l t)
+opening o (State Nothing l n) = o >>= \b -> return (State (Just b) l n)
 opening o s = close s >>= opening o
 
 close :: State -> IO State
-close (State (Just b) l t) = State noDev l t <$ closeBlink1 b
+close (State (Just b) l n) = State noDev l n <$ closeBlink1 b
 close s = return s
 
 run :: (forall b . Blink1 b => b -> IO a) -> (a -> IO ()) -> State -> IO State
@@ -68,27 +69,59 @@ options =
   , Opt.Option "S" ["serial"]
       (Opt.NoArg $ run getSerialNum print)
       "get the serial number (only works on mk1)"
+  , Opt.Option "p" ["pattern-step"]
+      (Opt.ReqArg (\n s -> return s{ patternStep = Just $ toEnum $ read n }) "STEP")
+      "operate on pattern STEP for next actions"
   , Opt.Option "l" ["led"]
       (Opt.OptArg (\l s -> return s{ led = fmap (toEnum . read) l }) "INDEX")
       "apply the next actions only to LED INDEX [all]"
   , Opt.Option "g" ["get"]
       (Opt.OptArg (\l s -> do
-        withDev s getColor2 (fromMaybe 0 (fmap (toEnum . read) l <|> led s)) >>= print
+        maybe
+          (withDev s getColor2 (fromMaybe 0 (fmap (toEnum . read) l <|> led s)) >>= print)
+          (\n -> withDev s getPattern n >>= print)
+          (guard (isNothing l) >> patternStep s)
         return s) "LED")
-      "get the current color of the LED"
+      "get the current (or pattern STEP) color of the LED"
   , Opt.Option "s" ["set"]
       (Opt.ReqArg (\c s -> do
-        withDev s setColor2 (led s) (read c)
-        return s) "RGB")
-      "set the color immediately"
-  , Opt.Option "t" ["time"]
-      (Opt.ReqArg (\t s -> return s{ time = read t }) "DELAY")
-      "set the delay/fade time for the next actions"
-  , Opt.Option "f" ["fade"]
-      (Opt.ReqArg (\c s -> do
-        withDev s fadeToColor2 (led s) (time s) (read c)
-        return s) "RGB")
-      "fade to color over DELAY"
+        let f = read c
+        maybe
+          (if fadeDelay f == 0 && isNothing (led s)
+            then withDev s setColor2 (led s) (fadeRGB f)
+            else withDev s fadeToColor2 (led s) f)
+          (\n -> withDev s setPattern n f)
+          (patternStep s)
+        return s) "RGB[@DELAY]")
+      "set LED (or pattern STEP) to fade to color RGB over DELAY [immediately]"
+  , Opt.Option "W" ["write-patterns"]
+      (Opt.NoArg $ run savePatterns2 return)
+      "commit changed patterns to flash (mk2 only)"
+  , Opt.Option "r" ["play-pattern"]
+      (Opt.OptArg (\a s -> do
+        let (m, r) = maybe (0, 0) ((read *** rep) . break ('*'==)) a
+            rep ('*':x) = read x
+            rep _ = 0
+        withDev s playPattern2 (maybe (m, 0) (, m) $ patternStep s) r
+        return s) "STEP[*REP]")
+      "start playing pattern from STEP (after -p: to STEP) [0] REP times [inf]"
+  , Opt.Option "e" ["stop-pattern"]
+      (Opt.NoArg $ \s -> withDev s playPattern Nothing >> return s)
+      "stop any playing pattern"
+  , Opt.Option "q" ["query-pattern"]
+      (Opt.NoArg $ \s -> withDev s getPlaying2 >>= print >> return s)
+      "report current play state"
+  , Opt.Option "d" ["server-down"]
+      (Opt.OptArg (\a s -> do
+        let (m, t) = maybe (0, 1) ((read *** del) . break ('@'==)) a
+            del ('@':x) = read x
+            del _ = 1
+        withDev s setServerDown2 $ Just (t, True, Just (maybe (m, 0) (, m) $ patternStep s))
+        return s) "STEP[@DELAY]")
+      "enable serverdown playing from STEP (after -p: to STEP) [0]"
+  , Opt.Option "u" ["server-up"]
+      (Opt.NoArg $ \s -> withDev s setServerDown Nothing >> return s)
+      "disable serverdown playing"
   ]
 
 usage :: String
@@ -103,4 +136,4 @@ main = do
       mapM_ putStrLn err
       putStrLn usage
       exitFailure
-  foldM (flip ($)) (State noDev Nothing 0) r >>= close
+  foldM (flip ($)) (State noDev Nothing Nothing) r >>= close

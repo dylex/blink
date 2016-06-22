@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-|
 
   To use any of these functions, you first must open a blink(1) device (providing the 'System.Hardware.Blink1.Class.Blink' interface).
@@ -10,6 +11,7 @@
 module System.Hardware.Blink1
   ( RGB(..), RGB8
   , Delay(..)
+  , Fade(..), Fade8
   , PatternStep
   , LED
 
@@ -102,19 +104,20 @@ setColor b = setColor2 b Nothing
 setColor2 :: Blink1 b => b -> Maybe LED -> RGB8 -> IO ()
 setColor2 b n c = command b 'n' $ rgb c ++ [0,0,led n]
 
-fadeToColor :: Blink1 b => b -> Delay -> RGB8 -> IO ()
+fadeToColor :: Blink1 b => b -> Fade8 -> IO ()
 fadeToColor b = fadeToColor2 b Nothing
 
-fadeToColor2 :: Blink1 b => b -> Maybe LED -> Delay -> RGB8 -> IO ()
-fadeToColor2 b n d c = command b 'c' $ rgb c ++ delay d ++ [led n]
+fadeToColor2 :: Blink1 b => b -> Maybe LED -> Fade8 -> IO ()
+fadeToColor2 b n (Fade c d) = command b 'c' $ rgb c ++ delay d ++ [led n]
 
 -- | enable/disable serverdown mode with the given timeout
-setServerDown :: Blink1 b => b -> Bool -> Delay -> IO ()
-setServerDown b o d = setServerDown2 b o d False (PatternStep 0, PatternStep 0)
+setServerDown :: Blink1 b => b -> Maybe Delay -> IO ()
+setServerDown b = setServerDown2 b . fmap (, False, Nothing)
 
--- | enable/disable serverdown mode with the given timeout, optionally staying on afterwards, over the given pattern range
-setServerDown2 :: Blink1 b => b -> Bool -> Delay -> Bool -> (PatternStep, PatternStep) -> IO ()
-setServerDown2 b o d s (sp,ep) = command b 'D' $ bool o : delay d ++ [bool s, pos sp, pos ep]
+-- | enable/disable serverdown mode with the given timeout, optionally staying on afterwards, over the given pattern range (or all)
+setServerDown2 :: Blink1 b => b -> Maybe (Delay, Bool, Maybe (PatternStep, PatternStep)) -> IO ()
+setServerDown2 b Nothing = command b 'D' [0]
+setServerDown2 b (Just (d, s, p)) = command b 'D' $ 1 : delay d ++ [bool s, pos $ maybe 0 fst p, pos $ maybe 0 snd p]
 
 -- | stop or start playing the sequence at the given position
 playPattern :: Blink1 b => b -> Maybe PatternStep -> IO ()
@@ -125,20 +128,20 @@ playPattern b (Just p) = command b 'p' [1, pos p]
 playPattern2 :: Blink1 b => b -> (PatternStep, PatternStep) -> Word8 -> IO ()
 playPattern2 b (sp, ep) n = command b 'p' [1, pos sp, pos ep, n]
 
--- | query the current play state.
+-- | query the current play state: step range, repeat count, position
 getPlaying2 :: Blink1 b => b -> IO (Maybe (PatternStep, PatternStep, Word8, Word8))
 getPlaying2 b = do
   _:a:sp:ep:n:i:_ <- request b 'S' []
   return $ if a > 0 then Just (PatternStep sp, PatternStep ep, n, i) else Nothing
 
 -- | set the sequence pattern for the given position
-setPattern :: Blink1 b => b -> PatternStep -> Delay -> RGB8 -> IO ()
-setPattern b p d c = command b 'P' $ rgb c ++ delay d ++ [pos p]
+setPattern :: Blink1 b => b -> PatternStep -> Fade8 -> IO ()
+setPattern b p (Fade c d) = command b 'P' $ rgb c ++ delay d ++ [pos p]
 
-getPattern :: Blink1 b => b -> PatternStep -> IO (Delay, RGB8)
+getPattern :: Blink1 b => b -> PatternStep -> IO Fade8
 getPattern dev p = do
   _:r:g:b:d1:d2:_ <- request dev 'R' $ rgb black ++ delay 0 ++ [pos p]
-  return (fi (i d1 `shiftL` 8 .|. i d2) / 100, RGB r g b)
+  return $ Fade (RGB r g b) (fi (i d1 `shiftL` 8 .|. i d2) / 100)
   where i = fi :: Word8 -> Word16
 
 savePatterns2 :: Blink1 b => b -> IO ()
