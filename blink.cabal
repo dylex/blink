@@ -9,6 +9,22 @@ executable blinkhd
     directory,
     linux-inotify,
     blink1
+  other-modules:
+        Activity
+        Blinker
+        Client
+        Command
+        Key
+        Loadavg
+        Mail
+        Pinger
+        Purple
+        Segment
+        Server
+        State
+        Time
+        Util
+  cpp-options: -I../pinger
 
 executable blinkh
   main-is: blinkh.hs
@@ -20,3 +36,12 @@ executable blinkh
     time,
     unix,
     blink1
+  other-modules:
+        Activity
+        Blinker
+        Command
+        Key
+        Segment
+        Time
+        Util
+

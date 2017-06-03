@@ -14,7 +14,7 @@ import Foreign.Storable (peek)
 import System.Posix.IO (openFd, OpenMode(ReadOnly), defaultFileFlags, closeFd)
 import System.Posix.Types (Fd(..))
 
-#include "../pinger/pingdev.h"
+#include "pingdev.h"
 
 import Time
 import Segment
