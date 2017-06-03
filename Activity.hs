@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, DeriveDataTypeable #-}
+{-# LANGUAGE PatternGuards #-}
 module Activity
   ( Activity(..)
   , Solid(..)

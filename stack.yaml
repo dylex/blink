@@ -1,0 +1,9 @@
+resolver: lts-6.33
+packages:
+- 'hs'
+- '.'
+extra-deps:
+- linux-inotify-0.3.0.1
+flags:
+  blink1:
+    usb: false

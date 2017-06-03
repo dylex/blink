@@ -1,0 +1,22 @@
+name: blink
+version: 0
+Build-Type:	Simple
+Cabal-Version:	>= 1.2
+
+executable blinkhd
+  main-is: blinkhd.hs
+  build-depends: base,
+    directory,
+    linux-inotify,
+    blink1
+
+executable blinkh
+  main-is: blinkh.hs
+  build-depends: base,
+    binary,
+    bytestring,
+    containers,
+    network,
+    time,
+    unix,
+    blink1
