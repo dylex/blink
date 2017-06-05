@@ -27,7 +27,7 @@ Library
         Build-Depends:	unix
         Exposed-Modules: System.Hardware.Blink1.Linux, System.Linux.HIDRaw
     if flag(usb)
-        Build-Depends:  usb, vector, text < 1.2, bytestring
+        Build-Depends:  usb >= 1.3, vector, text, bytestring
         Exposed-Modules: System.Hardware.Blink1.USB
 
 Executable blink1
@@ -39,5 +39,5 @@ Executable blink1
         build-depends: unix
         CPP-options: -DUSE_LINUX
     if flag(usb)
-        Build-Depends: usb, vector, text < 1.2, bytestring
+        Build-Depends: usb >= 1.3, vector, text, bytestring
         CPP-options: -DUSE_USB

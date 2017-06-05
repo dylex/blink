@@ -4,6 +4,8 @@ packages:
 - '.'
 extra-deps:
 - linux-inotify-0.3.0.1
+- usb-1.3.0.4
+- bindings-libusb-1.4.5.0
 flags:
   blink1:
     usb: false

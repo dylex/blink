@@ -62,10 +62,10 @@ getSerialNumber (Blink1USB d) = liftM Text.unpack $ maybe
   (\i -> getStrDescFirstLang d i 16) . deviceSerialNumberStrIx =<< getDeviceDesc (getDevice d)
 
 writeUSB :: Blink1USB -> [Word8] -> IO ()
-writeUSB (Blink1USB d) x = writeControlExact d Class ToInterface 0x09 0x301 interface (BS.pack x) 1000
+writeUSB (Blink1USB d) x = writeControlExact d (ControlSetup Class ToInterface 0x09 0x301 interface) (BS.pack x) 1000
 
 readUSB :: Blink1USB -> Int -> IO [Word8]
-readUSB (Blink1USB d) n = liftM (BS.unpack . fst) $ readControl d Class ToInterface 0x01 0x301 interface n 1000
+readUSB (Blink1USB d) n = liftM (BS.unpack . fst) $ readControl d (ControlSetup Class ToInterface 0x01 0x301 interface) n 1000
 
 instance Blink1 Blink1USB where
   writeBlink1 = writeUSB
