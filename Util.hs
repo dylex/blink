@@ -21,4 +21,4 @@ guardEndo True f = f
 type Unmask = forall a . IO a -> IO a
 
 forkMasked :: (ThreadId -> a) -> (Unmask -> IO ()) -> IO a
-forkMasked w = fmap w . uninterruptibleMask_ . forkIOWithUnmask
+forkMasked w f = w <$> uninterruptibleMask_ (forkIOWithUnmask f)

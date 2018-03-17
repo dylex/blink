@@ -54,7 +54,7 @@ loadavg blinker unmask = withFile "/proc/loadavg" ReadMode $ \h -> do
 newtype Loadavg = Loadavg { _loadavgThread :: ThreadId }
 
 startLoadavg :: Blinker -> IO Loadavg
-startLoadavg = forkMasked Loadavg . loadavg
+startLoadavg b = forkMasked Loadavg $ loadavg b
 
 setLoadavgColor :: Loadavg -> Color -> IO ()
 setLoadavgColor (Loadavg t) = throwTo t . SetColor

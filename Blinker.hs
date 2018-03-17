@@ -95,7 +95,7 @@ blinker done b w unmask = run (solid black) Map.empty `finally` done where
         run (shift dt seg) $ updateActs u (shiftActs dt acts))
 
 startBlinker :: Blink1 b => IO () -> b -> Maybe LED -> IO Blinker
-startBlinker done b = forkMasked Blinker . blinker done b
+startBlinker done b l = forkMasked Blinker $ blinker done b l
 
 updateAct :: Activity a => ActKey a -> (Maybe a -> Maybe a) -> IO ()
 updateAct (ActKey k t) f = throwTo t (Update k f)

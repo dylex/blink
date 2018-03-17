@@ -1,4 +1,4 @@
-resolver: lts-6.33
+resolver: lts-11.0
 packages:
 - 'hs'
 - '.'

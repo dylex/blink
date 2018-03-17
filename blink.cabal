@@ -24,7 +24,7 @@ executable blinkhd
         State
         Time
         Util
-  cpp-options: -I../pinger
+  include-dirs: ../pinger
 
 executable blinkh
   main-is: blinkh.hs
