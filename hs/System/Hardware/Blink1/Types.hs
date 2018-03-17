@@ -75,6 +75,11 @@ clipAdd x y
   | otherwise = z
   where z = x + y
 
+#if MIN_VERSION_base(4,11,0)
+instance (Num a, Ord a, Bounded a) => Semigroup (RGB a) where
+  (<>) = liftA2 clipAdd
+#endif
+
 -- |like 'Sum' but clips overflowing values at 'maxBound'
 instance (Num a, Ord a, Bounded a) => Monoid (RGB a) where
   mempty = 0
