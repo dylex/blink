@@ -86,31 +86,31 @@ main = do
     fail "cannot listen and connect on same port"
 
   bracket (optDevice opts) (\(Blink1Dev b) -> closeBlink1 b) $ \(Blink1Dev b) -> do
-  setColor b black
+    setColor b black
 
-  leds <-
-    let
-      vl ('1',_) = Nothing
-      vl ('2',_) = Just (LED 2)
-      vl (x,y) = error ("unknown blink(1) version: " ++ [x,'.',y] ++ " (maybe use -L)")
-      ol 0 = Nothing
-      ol n | n >= 1 && n <= 2 = Just (toEnum n)
-      ol n = error ("unsupported LED count: " ++ show n)
-    in maybe (vl <$> getVersion b) (return . ol) $ optLEDs opts
+    leds <-
+      let
+        vl ('1',_) = Nothing
+        vl ('2',_) = Just (LED 2)
+        vl (x,y) = error ("unknown blink(1) version: " ++ [x,'.',y] ++ " (maybe use -L)")
+        ol 0 = Nothing
+        ol n | n >= 1 && n <= 2 = Just (toEnum n)
+        ol n = error ("unsupported LED count: " ++ show n)
+      in maybe (vl <$> getVersion b) (return . ol) $ optLEDs opts
 
-  wait <- newEmptyMVar
-  let done = putMVar wait ()
+    wait <- newEmptyMVar
+    let done = putMVar wait ()
 
-  bs <- mapM (startBlinker done b) (maybe [Nothing] (map Just . enumFromTo minBound) leds)
-  
-  let led1:led2:_ = cycle bs
+    bs <- mapM (startBlinker done b) (maybe [Nothing] (map Just . enumFromTo minBound) leds)
+    
+    let led1:led2:_ = cycle bs
 
-  loadavg <- startLoadavg led1
-  purple <- initPurple led2
-  server <- startServer loadavg purple (optListen opts)
-  startMail server
-  startPinger led2
-  Data.Foldable.mapM_ (startCommand bs) (optCommand opts)
-  Data.Foldable.mapM_ (startClient server) (optConnect opts)
+    loadavg <- startLoadavg led1
+    purple <- initPurple led2
+    server <- startServer loadavg purple (optListen opts)
+    startMail server
+    startPinger led2
+    Data.Foldable.mapM_ (startCommand bs) (optCommand opts)
+    Data.Foldable.mapM_ (startClient server) (optConnect opts)
 
-  takeMVar wait
+    takeMVar wait

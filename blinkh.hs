@@ -123,14 +123,12 @@ main = do
       exitFailure
 
   bracket (Net.socket Net.AF_UNIX Net.Datagram Net.defaultProtocol) Net.close $ \sock -> do
-  Net.connect sock (Net.SockAddrUnix (optSocket opts))
+    Net.connect sock (Net.SockAddrUnix (optSocket opts))
 
-  let send cmd = do
-        r <- Net.BS.send sock d
-        unless (r == BS.length d) $ ioError $ mkIOError fullErrorType "send" Nothing (Just (optSocket opts))
-        where d = encode cmd
+    let send cmd = do
+          r <- Net.BS.send sock d
+          unless (r == BS.length d) $ ioError $ mkIOError fullErrorType "send" Nothing (Just (optSocket opts))
+          where d = encode cmd
 
-  -- print (cmdSequence $ optCommand opts)
-  send (optCommand opts)
-
-  return ()
+    -- print (cmdSequence $ optCommand opts)
+    send (optCommand opts)

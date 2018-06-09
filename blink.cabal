@@ -1,13 +1,21 @@
 name: blink
 version: 0
 Build-Type:	Simple
-Cabal-Version:	>= 1.2
+Cabal-Version:	>= 1.10
 
 executable blinkhd
+  default-language: Haskell2010
+  ghc-options: -Wall
   main-is: blinkhd.hs
   build-depends: base,
+    binary,
+    bytestring,
+    containers,
     directory,
     linux-inotify,
+    network,
+    time,
+    unix,
     blink1
   other-modules:
         Activity
@@ -27,6 +35,8 @@ executable blinkhd
   include-dirs: ../pinger
 
 executable blinkh
+  default-language: Haskell2010
+  ghc-options: -Wall
   main-is: blinkh.hs
   build-depends: base,
     binary,
