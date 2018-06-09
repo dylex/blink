@@ -4,7 +4,7 @@ module Purple
   , updatePurple
   ) where
 
-import Data.Bits (bit, testBit)
+import Data.Bits (bit, testBit, clearBit)
 import Data.List (intersperse)
 import Data.Word (Word8)
 
@@ -14,24 +14,21 @@ import State
 import Activity
 import Blinker
 
-frac :: RealFrac a => a -> a
-frac = (snd :: (Integer, a) -> a) . properFraction
-
 hue :: Float -> Color
-hue h
-  | x <= 1 = RGB 1 y 0
-  | x <= 2 = RGB z 1 0
-  | x <= 3 = RGB 0 1 y
-  | x <= 4 = RGB 0 z 1
-  | x <= 5 = RGB y 0 1
-  | otherwise = RGB 1 0 z
+hue h = case x :: Word8 of
+  0 -> RGB 1 y 0
+  1 -> RGB z 1 0
+  2 -> RGB 0 1 y
+  3 -> RGB 0 z 1
+  4 -> RGB y 0 1
+  5 -> RGB 1 0 z
+  _ -> RGB 1 1 1
   where
-    x = 6*frac h
-    y = frac x
+    (x, y) = properFraction (6*h)
     z = 1 - y
 
 color :: Word8 -> Color
-color w = b * hue (fromIntegral w / fromIntegral (pred (bit highBit) :: Word8)) where
+color w = b * hue (fromIntegral (clearBit w highBit) / fromIntegral (pred (bit highBit) :: Word8)) where
   b = if testBit w highBit then 0.5 else 0.25
 
 duration :: Interval
