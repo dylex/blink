@@ -29,9 +29,11 @@ loadavgColor = color . stateMail where
 (|+|) x (-1) = x
 (|+|) x y = x + y
 
+instance Semigroup State where
+  State m1 p1 d1 <> State m2 p2 d2 = State (m1 |+| m2) (p1 ++ p2) (d1 || d2)
+
 instance Monoid State where
   mempty = State (-1) [] False
-  mappend (State m1 p1 d1) (State m2 p2 d2) = State (m1 |+| m2) (p1 ++ p2) (d1 || d2)
 
 highBit :: Int
 highBit = 7 -- pred $ finiteBitSize (0 :: Word8)

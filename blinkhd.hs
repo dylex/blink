@@ -92,7 +92,7 @@ main = do
       let
         vl ('1',_) = Nothing
         vl ('2',_) = Just (LED 2)
-        vl (x,y) = error ("unknown blink(1) version: " ++ [x,'.',y] ++ " (maybe use -L)")
+        vl (x,y) = error ("unknown blink(1) version: " ++ [x,'.',y] ++ " (maybe use -l)")
         ol 0 = Nothing
         ol n | n >= 1 && n <= 2 = Just (toEnum n)
         ol n = error ("unsupported LED count: " ++ show n)

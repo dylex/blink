@@ -68,12 +68,14 @@ trunc t f@(Segment s l _)
   | l > t = Segment s t (interp f t)
   | otherwise = f
 
-instance Monoid Segment where
-  mempty = solid black
-  mappend f1@(Segment _ l1 _) f2@(Segment _ l2 _) = Segment (s1 + s2) l (e1 + e2) where
+instance Semigroup Segment where
+  f1@(Segment _ l1 _) <> f2@(Segment _ l2 _) = Segment (s1 + s2) l (e1 + e2) where
     l = min l1 l2
     Segment s1 _ e1 = trunc l f1
     Segment s2 _ e2 = trunc l f2
+
+instance Monoid Segment where
+  mempty = solid black
 
 instance Binary Segment where
   put (Segment s l e) = put s >> put l >> put e
