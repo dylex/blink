@@ -103,7 +103,7 @@ main = do
 
     bs <- mapM (startBlinker done b) (maybe [Nothing] (map Just . enumFromTo minBound) leds)
     
-    let led1:led2:_ = cycle bs
+    let led2:led1:_ = cycle bs
 
     loadavg <- startLoadavg led1
     purple <- initPurple led2

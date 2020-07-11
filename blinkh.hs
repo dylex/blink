@@ -82,7 +82,7 @@ parseArgs args = set <$> seg black (map words $ splitBy (`elem` ",;\n") $ unword
   seg _ [] = return []
   seg p [[]] = return [Segment1Solid p]
   seg p [[a]] = return . either Segment1Solid (solid p) <$> colorOrLen a
-  seg _ ([]:_) = fail "empty segment"
+  seg _ ([]:_) = Left "empty segment"
   seg p (s:l) = start p s l
 
   start p (a:s) r = either
@@ -93,7 +93,7 @@ parseArgs args = set <$> seg black (map words $ splitBy (`elem` ",;\n") $ unword
   mid c (a:s) r = do
     l <- len a
     end c l s r
-  mid _ [] _ = fail "invalid segment: length expected"
+  mid _ [] _ = Left "invalid segment: length expected"
   end c l [] r = add (solid c l) [] r
   end c l (a:s) r = do
     e <- color a

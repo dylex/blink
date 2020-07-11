@@ -33,8 +33,8 @@ connect server sk addr =
 
 client :: Server -> Net.PortNumber -> IO ()
 client server port = do
-  localhost <- Net.inet_addr "127.0.0.1" -- INADDR_LOOPBACK
-  let addr = Net.SockAddrInet port localhost
+  let localhost = Net.tupleToHostAddress (127,0,0,1) -- INADDR_LOOPBACK
+      addr = Net.SockAddrInet port localhost
   sk <- newKey
 
   forever $ do

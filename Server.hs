@@ -37,7 +37,7 @@ serve :: Server -> Net.Socket -> IO ()
 serve Server{ serverState = v, serverTrigger = t } sock = do
   Net.shutdown sock Net.ShutdownReceive
   let run = do
-        threadWaitWrite (Fd (Net.fdSocket sock))
+        Net.withFdSocket sock $ threadWaitWrite . Fd
         _ <- tryTakeMVar t
         _ <- Net.BS.sendAll sock =<< readIORef v
         readMVar t
@@ -46,8 +46,8 @@ serve Server{ serverState = v, serverTrigger = t } sock = do
 
 server :: Server -> Net.PortNumber -> IO ()
 server s port = do
-  localhost <- Net.inet_addr "127.0.0.1" -- INADDR_LOOPBACK
-  let addr = Net.SockAddrInet port localhost
+  let localhost = Net.tupleToHostAddress (127,0,0,1) -- INADDR_LOOPBACK
+      addr = Net.SockAddrInet port localhost
   bracket (Net.socket Net.AF_INET Net.Stream Net.defaultProtocol) Net.close $ \sock -> do
     Net.setSocketOption sock Net.ReuseAddr 1
     Net.bind sock addr
