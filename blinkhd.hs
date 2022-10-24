@@ -52,7 +52,7 @@ options =
       "use blink(1) hidraw device [auto]"
   , Opt.Option "n" ["dummy"]
       (Opt.NoArg (\o -> o{ optDevice = return (Blink1Dev (openDummy False)) }))
-      "use dummy blink(1) device"
+      "use dummy blink(1) device (also specify -l)"
   , Opt.Option "d" ["debug"]
       (Opt.NoArg (\o -> o{ optDevice = return (Blink1Dev (openDummy True)), optListen = Nothing, optConnect = Nothing, optCommand = Nothing }))
       "debugging mode (implies -nLCS)"
