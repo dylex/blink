@@ -11,13 +11,15 @@ module System.Hardware.Blink1.Linux
   , openRawHIDs
   ) where
 
-import Control.Exception (onException, bracket)
+import Control.Exception (Exception, catchJust, onException, bracket)
 import Control.Monad
 import Data.List (isPrefixOf, genericLength)
 import Data.Word (Word8)
 import Foreign.C.Error (errnoToIOError, eFTYPE) -- hack
+import GHC.IO.Exception (IOErrorType(ProtocolError))
 import Numeric (readHex)
-import System.IO.Error (mkIOError, fullErrorType, doesNotExistErrorType)
+import System.IO (hPutStrLn, stderr)
+import System.IO.Error (mkIOError, fullErrorType, doesNotExistErrorType, ioeGetErrorType)
 import System.Posix.IO
 import System.Posix.Directory (openDirStream, readDirStream, closeDirStream)
 import System.Posix.Types (Fd)
@@ -66,10 +68,16 @@ openRawHID = maybe
 openRawHIDs :: IO [Blink1Raw]
 openRawHIDs = mapM openRawDev =<< findRawDev
 
+retryWhen :: Exception e => Int -> (e -> Maybe String) -> IO a -> IO a
+retryWhen 0 _ f = f
+retryWhen n g f = catchJust g f $ \e -> do
+  hPutStrLn stderr (e ++ ". retrying...")
+  retryWhen (pred n) g f
+
 writeRaw :: Blink1Raw -> [Word8] -> IO ()
 writeRaw (Blink1Raw d) x = do -- setFeature d x
   let l = genericLength x
-  r <- withArray x $ \p -> fdWriteBuf d p l
+  r <- withArray x $ \p -> retryWhen 1 (\e -> "fdWriteBuf: protocol error" <$ guard (ProtocolError == ioeGetErrorType e)) $ fdWriteBuf d p l
   when (r /= l) $ ioError $ mkIOError fullErrorType "Blink1Raw: short write" Nothing Nothing
 
 readRaw :: Blink1Raw -> Int -> IO [Word8]
