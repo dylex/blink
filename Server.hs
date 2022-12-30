@@ -51,7 +51,7 @@ server s port = do
   bracket (Net.socket Net.AF_INET Net.Stream Net.defaultProtocol) Net.close $ \sock -> do
     Net.setSocketOption sock Net.ReuseAddr 1
     Net.bind sock addr
-    Net.listen sock 1
+    Net.listen sock 2
     forever $ bracket (Net.accept sock) (Net.close . fst) $ \(c, _) ->
       serve s c `catchIOError` \e -> hPutStrLn stderr ("server: " ++ show e)
 
