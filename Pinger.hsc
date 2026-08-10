@@ -45,7 +45,7 @@ ping pd = alloca $ \p -> do
   peek p
 
 pinger :: Blinker -> IO ()
-pinger blinker = bracket (openFd "/dev/ping" ReadOnly Nothing defaultFileFlags) (closeFd) $ \pd -> do
+pinger blinker = bracket (openFd "/dev/ping" ReadOnly defaultFileFlags) (closeFd) $ \pd -> do
   k <- newActKey blinker
   i <- pingInterval pd
   let run c = do

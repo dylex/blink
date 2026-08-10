@@ -33,7 +33,7 @@ newtype Blink1Raw = Blink1Raw Fd
 -- | Open the given blink(1) hidraw device
 openRawDev :: FilePath -> IO Blink1Raw
 openRawDev f = do
-  d <- openFd df ReadWrite Nothing defaultFileFlags
+  d <- openFd df ReadWrite defaultFileFlags
   i <- devInfo d `onException` closeFd d
   when (devVendor i /= blink1Vendor || devProduct i /= blink1Product) $ do
     closeFd d
